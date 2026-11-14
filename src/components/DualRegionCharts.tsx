@@ -13,6 +13,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import Tex from "@/components/math/Tex";
+import { texNum, texP } from "@/components/math/texFormat";
 import { NASA_VARIABLES } from "@/data/nasaVariables";
 import { formatDMS } from "@/lib/nasaPowerClient";
 import type {
@@ -42,18 +44,21 @@ const VARIABLE_ORDER: NasaVariableCode[] = [
 
 function formatSignificanceBadge(sig: SignificanceLevel): {
   label: string;
+  tex?: string;
   classes: string;
 } {
   if (sig === "HIGHLY_SIGNIFICANT") {
     return {
-      label: "HIGHLY SIGNIFICANT p < 0.01",
+      label: "HIGHLY SIGNIFICANT",
+      tex: "p < 0.01",
       classes:
         "bg-drought-coral/20 text-drought-coral border-drought-coral/40",
     };
   }
   if (sig === "SIGNIFICANT") {
     return {
-      label: "SIGNIFICANT p < 0.05",
+      label: "SIGNIFICANT",
+      tex: "p < 0.05",
       classes: "bg-radar-gold/20 text-radar-gold border-radar-gold/40",
     };
   }
@@ -63,9 +68,6 @@ function formatSignificanceBadge(sig: SignificanceLevel): {
   };
 }
 
-function formatPValue(p: number): string {
-  return p < 0.001 ? p.toExponential(2) : p.toFixed(3);
-}
 
 interface ChartTooltipProps {
   active?: boolean;
@@ -95,8 +97,7 @@ function CustomChartTooltip({
       <div className="text-ink-secondary">
         Deseasonalized Z:{" "}
         <span className="text-ink-primary font-bold">
-          {point.deseasonalizedZ > 0 ? "+" : ""}
-          {point.deseasonalizedZ.toFixed(2)} σ
+          <Tex math={`${texNum(point.deseasonalizedZ, 2, true)}\\,\\sigma`} />
         </span>
       </div>
       <div className="text-ink-secondary">
@@ -160,15 +161,18 @@ function SingleRegionChartCard({
 
           <div className="mt-1.5 flex items-center gap-3 flex-wrap font-mono text-[11px] tabular-nums">
             <span className="text-ink-secondary">
-              Mann-Kendall τ:{" "}
+              Mann-Kendall{" "}
               <strong className="text-ink-primary">
-                {trend.isAvailable ? trend.mannKendallTau.toFixed(3) : "N/A"}
+                {trend.isAvailable ? (
+                  <Tex math={`\\tau = ${texNum(trend.mannKendallTau, 3)}`} />
+                ) : (
+                  <Tex math="\tau = \text{N/A}" />
+                )}
               </strong>
             </span>
             <span className="text-ink-secondary">
-              p-value:{" "}
               <strong className="text-ink-primary">
-                {trend.isAvailable ? formatPValue(trend.pValue) : "N/A"}
+                {trend.isAvailable ? <Tex math={texP(trend.pValue)} /> : "p: N/A"}
               </strong>
             </span>
             <span className="text-ink-secondary">
@@ -185,7 +189,19 @@ function SingleRegionChartCard({
         <span
           className={`px-2 py-0.5 rounded border font-mono text-[10px] font-bold uppercase tracking-wider shrink-0 ${sigBadge.classes}`}
         >
-          {trend.isAvailable ? sigBadge.label : "OCEAN GRID N/A"}
+          {trend.isAvailable ? (
+            <>
+              {sigBadge.label}
+              {sigBadge.tex ? (
+                <>
+                  {" "}
+                  <Tex math={sigBadge.tex} />
+                </>
+              ) : null}
+            </>
+          ) : (
+            "OCEAN GRID N/A"
+          )}
         </span>
       </div>
 

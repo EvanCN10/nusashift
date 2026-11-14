@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { Cpu, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
+import MathText from "@/components/math/MathText";
+import Tex from "@/components/math/Tex";
+import { texP } from "@/components/math/texFormat";
 import { serializeSummaryForAi } from "@/data/cachedCases";
 import { generateDeterministicCausalBrief } from "@/lib/causalFallback";
 import { formatDMS } from "@/lib/nasaPowerClient";
@@ -164,7 +167,7 @@ export default function BoundedAiBrief({
           <div className="flex items-baseline justify-between gap-2">
             <dt className="text-ink-muted shrink-0">Dipole p-val:</dt>
             <dd className="font-mono tabular-nums text-ink-primary text-right">
-              p = {report.dipolePValue.toExponential(2)}
+              <Tex math={texP(report.dipolePValue)} />
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-2">
@@ -206,8 +209,8 @@ export default function BoundedAiBrief({
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-drought-coral shrink-0">Primary Shift:</span>
             <span className="text-ink-primary text-right">
-              {report.primaryVariable} · {primaryTrend.changePointDate} (p ={" "}
-              {primaryTrend.pValue.toExponential(2)})
+              {report.primaryVariable} · {primaryTrend.changePointDate} (
+              <Tex math={texP(primaryTrend.pValue)} />)
             </span>
           </div>
         </div>
@@ -228,7 +231,7 @@ export default function BoundedAiBrief({
           ) : null}
 
           <h3 className="text-sm font-semibold leading-snug text-ink-primary">
-            {activeBrief.headline}
+            <MathText text={activeBrief.headline} />
           </h3>
         </div>
 
@@ -244,7 +247,9 @@ export default function BoundedAiBrief({
                   aria-hidden="true"
                   className="mt-1.5 w-1.5 h-1.5 rounded-full bg-drought-orange shrink-0"
                 />
-                <span>{point}</span>
+                <span>
+                  <MathText text={point} />
+                </span>
               </li>
             ))}
           </ul>
@@ -262,7 +267,9 @@ export default function BoundedAiBrief({
                   aria-hidden="true"
                   className="mt-1.5 w-1.5 h-1.5 rounded-full bg-dipole-cyan shrink-0"
                 />
-                <span>{action}</span>
+                <span>
+                  <MathText text={action} />
+                </span>
               </li>
             ))}
           </ul>

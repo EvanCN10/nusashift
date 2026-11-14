@@ -1,12 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Compass, Loader2, Sprout } from "lucide-react";
 import BoundedAiBrief from "@/components/BoundedAiBrief";
 import DualRegionCharts from "@/components/DualRegionCharts";
 import HypothesisTriage from "@/components/HypothesisTriage";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import LagCascadePanel from "@/components/LagCascadePanel";
+import MapControlsBar, { type MapRenderMode } from "@/components/MapControlsBar";
 import NavbarHeader from "@/components/NavbarHeader";
 import ScientificProofDrawer from "@/components/ScientificProofDrawer";
 import {
@@ -19,6 +27,8 @@ import {
   WINDOW_OPTIONS,
 } from "@/data/nasaVariables";
 import { generateDeterministicCausalBrief } from "@/lib/causalFallback";
+import MathText from "@/components/math/MathText";
+import { texNum, texP, withMarkdownMath } from "@/components/math/texFormat";
 import { formatDMS } from "@/lib/nasaPowerClient";
 import type {
   CausalExplanationResponse,
@@ -49,6 +59,23 @@ const VALID_VIEWS = new Set<ViewLayerMode>([
   "citizen",
   "scientific",
 ]);
+
+const OVERLAY_LAYOUT_QUERY = "(min-width: 1280px)";
+
+function subscribeOverlayLayout(cb: () => void) {
+  const mql = window.matchMedia(OVERLAY_LAYOUT_QUERY);
+  mql.addEventListener("change", cb);
+  return () => mql.removeEventListener("change", cb);
+}
+
+/** True on xl+ screens, where HUD panels float over the full-bleed globe. */
+function useIsOverlayLayout(): boolean {
+  return useSyncExternalStore(
+    subscribeOverlayLayout,
+    () => window.matchMedia(OVERLAY_LAYOUT_QUERY).matches,
+    () => false
+  );
+}
 
 function buildQueryParams(
   report: DualRegionAnalysisReport,
@@ -114,16 +141,14 @@ function buildMarkdownBrief(
       if (!trend.isAvailable) {
         return `| ${code} | ${label} | ${trend.sampleCount} | N/A | N/A | Ocean Grid N/A | — | — |`;
       }
-      const pStr =
-        trend.pValue < 0.001 ? trend.pValue.toExponential(2) : trend.pValue.toFixed(4);
-      const ciStr = `[${trend.confidenceInterval95[0].toFixed(4)}, ${trend.confidenceInterval95[1].toFixed(4)}]`;
-      return `| ${code} | ${label} | ${trend.sampleCount} | ${trend.mannKendallTau.toFixed(3)} | ${pStr} | ${trend.sensSlopePerDecade.toFixed(4)} ${trend.unit}/dec | ${ciStr} | ${trend.changePointDate} (K=${Math.round(trend.pettittStatistic)}) |`;
+      const ciStr = `$[${texNum(trend.confidenceInterval95[0], 4)},\\ ${texNum(trend.confidenceInterval95[1], 4)}]$`;
+      return `| ${code} | ${label} | ${trend.sampleCount} | $${texNum(trend.mannKendallTau, 3)}$ | $${texP(trend.pValue)}$ | $${texNum(trend.sensSlopePerDecade, 4, true)}$ ${trend.unit}/dec | ${ciStr} | ${trend.changePointDate} ($K_T = ${Math.round(trend.pettittStatistic)}$) |`;
     });
   });
 
   const cascadeLines = report.lagCascadeA.map(
     (link) =>
-      `- **${link.fromVariable} -> ${link.toVariable}:** +${link.optimalLagMonths} mo lag, r = ${link.correlationR.toFixed(3)}, p = ${link.pValue.toExponential(2)} (${link.interpretation})`
+      `- **${link.fromVariable} -> ${link.toVariable}:** $k^{*} = +${link.optimalLagMonths}$ mo, $r = ${texNum(link.correlationR, 3)}$, $${texP(link.pValue)}$ (${withMarkdownMath(link.interpretation)})`
   );
 
   const gv = report.gistempValidation;
@@ -138,32 +163,32 @@ function buildMarkdownBrief(
     `- **Data Feed:** ${report.dataSourceTag}`,
     `- **Region A (Target):** ${report.regionA.name} (${formatDMS(report.regionA.lat, report.regionA.lon)})`,
     `- **Region B (Paired):** ${report.regionB.name} (${formatDMS(report.regionB.lat, report.regionB.lon)})`,
-    `- **Dipole Correlation:** r = ${report.dipoleCorrelationR.toFixed(3)}, p = ${report.dipolePValue.toExponential(2)}, Opposite-Sign = ${report.isOppositeDirection ? "YES" : "NO"}`,
-    `- **Silent Ecological Stress:** ${report.silentEcologicalStressDetected ? "DETECTED" : "NOT DETECTED"} — ${report.silentStressReason}`,
+    `- **Dipole Correlation:** $r = ${texNum(report.dipoleCorrelationR, 3)}$, $${texP(report.dipolePValue)}$, Opposite-Sign = ${report.isOppositeDirection ? "YES" : "NO"}`,
+    `- **Silent Ecological Stress:** ${report.silentEcologicalStressDetected ? "DETECTED" : "NOT DETECTED"} — ${withMarkdownMath(report.silentStressReason)}`,
     ``,
     `## Causal Synthesis (${brief.source})`,
-    `### ${brief.headline}`,
+    `### ${withMarkdownMath(brief.headline)}`,
     ``,
     `### Physical Teleconnection Mechanism`,
-    ...brief.physicalMechanism.map((m) => `- ${m}`),
+    ...brief.physicalMechanism.map((m) => `- ${withMarkdownMath(m)}`),
     ``,
     `### Regional Mitigation Recommendations`,
-    ...brief.mitigationActions.map((a) => `- ${a}`),
+    ...brief.mitigationActions.map((a) => `- ${withMarkdownMath(a)}`),
     ``,
     `## Water-Energy Lag-Cascade (Region A)`,
     ...cascadeLines,
     ``,
     `## Non-Parametric Statistical Proof Matrix (Deseasonalized Monthly Anomalies)`,
-    `| Variable | Region | N | Mann-Kendall tau | p-value | Sen's Slope / Decade | 95% CI | Pettitt Shift |`,
+    `| Variable | Region | N | Mann-Kendall $\\tau$ | $p$-value | Sen's Slope $Q_{\\text{dec}}$ | 95% CI | Pettitt Shift ($K_T$) |`,
     `| :--- | :--- | ---: | ---: | ---: | ---: | :--- | :--- |`,
     ...matrixLines,
     ``,
     `## NASA GISTEMP v4 Cross-Validation`,
     `- **Dataset:** ${gv.datasetName} (${gv.period})`,
-    `- **Published Reference Slope:** +${gv.publishedReferenceSlopePerDecade.toFixed(4)} °C/decade`,
-    `- **Engine Computed Slope:** +${gv.computedSlopePerDecade.toFixed(4)} °C/decade`,
+    `- **Published Reference Slope:** $${texNum(gv.publishedReferenceSlopePerDecade, 4, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}$`,
+    `- **Engine Computed Slope:** $${texNum(gv.computedSlopePerDecade, 4, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}$`,
     `- **Calibration Deviation:** ${gv.deviationPct.toFixed(2)}% (Calibrated: ${gv.isCalibrated ? "YES" : "NO"})`,
-    `- **GISTEMP Mann-Kendall tau:** ${gv.mannKendallTau.toFixed(3)} (p = ${gv.mannKendallPValue.toExponential(2)})`,
+    `- **GISTEMP Mann-Kendall:** $\\tau =${texNum(gv.mannKendallTau, 3)}$, $${texP(gv.mannKendallPValue)}$`,
     ``,
   ].join("\n");
 }
@@ -212,7 +237,15 @@ export default function NusaShiftDashboardPage() {
   const [activeBrief, setActiveBrief] = useState<CausalExplanationResponse | null>(
     null
   );
+  const [mapMode, setMapMode] = useState<MapRenderMode>("3d");
+  const [is3dAvailable, setIs3dAvailable] = useState(true);
+  const isOverlayLayout = useIsOverlayLayout();
   const hydratedRef = useRef(false);
+
+  const handle3dUnsupported = useCallback(() => {
+    setIs3dAvailable(false);
+    setMapMode("2d");
+  }, []);
 
   const syncUrl = useCallback(
     (nextReport: DualRegionAnalysisReport, nextView: ViewLayerMode) => {
@@ -492,7 +525,7 @@ export default function NusaShiftDashboardPage() {
 
   return (
     <div className="min-h-screen tactical-grid-bg bg-canvas-900 text-ink-primary">
-      <main className="max-w-[1600px] mx-auto px-3 sm:px-4 py-3.5 space-y-3.5">
+      <main className="max-w-[1920px] mx-auto px-3 sm:px-4 py-3.5 space-y-3.5">
         {/* Top Command Header */}
         <NavbarHeader
           report={report}
@@ -502,82 +535,104 @@ export default function NusaShiftDashboardPage() {
           onExportBrief={handleExportBrief}
         />
 
-        {/* Live Telemetry Query Status */}
-        {isAnalyzing ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="hud-panel rounded-lg px-3.5 py-2 border border-dipole-cyan/40 text-xs font-mono text-dipole-cyan flex items-center gap-2"
-          >
-            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
-            <span>
-              Querying NASA POWER API v2 ({report.startYear}–{report.endYear}) for
-              dual-region monthly Earth-system telemetry...
-            </span>
-          </div>
-        ) : null}
-
-        {/* Plain-English Citizen / Community Impact Banner */}
-        {viewMode === "citizen" ? (
-          <section
-            aria-label="Citizen and community climate translation"
-            className="hud-panel rounded-xl px-4 py-3 border border-dipole-cyan/40 flex items-start gap-3"
-          >
-            <Sprout
-              className="w-5 h-5 text-dipole-cyan shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
-                  What This Means for Local Communities &amp; Farmers
-                </h2>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-950 border border-white/10 text-ink-secondary">
-                  CITIZEN VIEW · PLAIN-ENGLISH TRANSLATION
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
-                {buildCitizenTakeaway(report)}
-              </p>
-            </div>
-          </section>
-        ) : null}
-
-        {/* 12-Column Tactical Bento Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-          {/* Left 3 Cols: Hypothesis Triage & NASA Sensors */}
-          <div className="lg:col-span-3 min-w-0">
-            <HypothesisTriage
-              report={report}
-              activeVariable={activeVariable}
-              onSelectVariable={setActiveVariable}
-              onSymptomChange={(symptom) => handleUpdateParameters({ symptom })}
-              onEcosystemChange={(ecosystem) =>
-                handleUpdateParameters({ ecosystem })
-              }
-              onWindowChange={(startYear, endYear) =>
-                handleUpdateParameters({ startYear, endYear })
-              }
-            />
-          </div>
-
-          {/* Center 6 Cols: Interactive World Map + 4-Node Lag Cascade */}
-          <div className="lg:col-span-6 min-w-0 flex flex-col gap-3.5">
+        {/*
+          Hero workspace. On xl+ the globe is full-bleed and the HUD panels float
+          over it (overlay uses pointer-events-none so the globe stays draggable
+          between panels). Below xl the overlay wrapper is display:contents and
+          everything stacks: Triage -> Controls -> Globe -> Lag-Cascade -> Brief.
+        */}
+        <section
+          aria-label="3D teleconnection globe workspace"
+          className="relative flex flex-col gap-3.5 xl:block xl:h-[calc(100dvh-9.25rem)] xl:min-h-[700px] xl:rounded-xl xl:overflow-hidden xl:border xl:border-white/10 xl:bg-canvas-950/40"
+        >
+          {/* Layer 0: Map viewport */}
+          <div className="order-2 relative h-[62vh] min-h-[380px] max-h-[620px] rounded-xl overflow-hidden border border-white/10 bg-canvas-950 xl:absolute xl:inset-0 xl:h-auto xl:min-h-0 xl:max-h-none xl:rounded-none xl:border-0 xl:bg-transparent">
             <InteractiveWorldMap
               report={report}
-              activePinMode={activePinMode}
-              isAnalyzing={isAnalyzing}
-              onPinModeChange={setActivePinMode}
-              onSelectCase={handleSelectCase}
+              mapMode={mapMode}
+              globeFocus={viewMode === "lag_cascade" ? "regionA" : "pair"}
+              globeVerticalOffset={isOverlayLayout ? -60 : 0}
               onMapClickCoordinate={handleMapClickCoordinate}
+              on3dUnsupported={handle3dUnsupported}
             />
+          </div>
 
+          {/* Layer 1: Floating HUD overlay */}
+          <div className="contents xl:pointer-events-none xl:absolute xl:inset-0 xl:z-10 xl:grid xl:grid-cols-[minmax(0,var(--hud-side-l))_minmax(0,1fr)_minmax(0,var(--hud-side-r))] xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:gap-3 xl:p-3">
+            {/* Top-center: map controls, live status, citizen translation */}
+            <div className="order-1 min-w-0 flex flex-col gap-2 xl:col-start-2 xl:row-start-1 xl:w-full xl:max-w-[780px] xl:justify-self-center xl:pointer-events-auto">
+              <MapControlsBar
+                report={report}
+                activePinMode={activePinMode}
+                isAnalyzing={isAnalyzing}
+                mapMode={mapMode}
+                is3dAvailable={is3dAvailable}
+                onPinModeChange={setActivePinMode}
+                onSelectCase={handleSelectCase}
+                onMapModeChange={setMapMode}
+              />
+
+              {isAnalyzing ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="hud-panel-float rounded-lg px-3.5 py-2 border border-dipole-cyan/40 text-xs font-mono text-dipole-cyan flex items-center gap-2"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
+                  <span>
+                    Querying NASA POWER API v2 ({report.startYear}–{report.endYear}) for
+                    dual-region monthly Earth-system telemetry...
+                  </span>
+                </div>
+              ) : null}
+
+              {viewMode === "citizen" ? (
+                <section
+                  aria-label="Citizen and community climate translation"
+                  className="hud-panel-float rounded-xl px-4 py-3 border border-dipole-cyan/40 flex items-start gap-3"
+                >
+                  <Sprout
+                    className="w-5 h-5 text-dipole-cyan shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
+                        What This Means for Local Communities &amp; Farmers
+                      </h2>
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-950 border border-white/10 text-ink-secondary">
+                        CITIZEN VIEW · PLAIN-ENGLISH TRANSLATION
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
+                      <MathText text={buildCitizenTakeaway(report)} />
+                    </p>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+
+            {/* Left: Hypothesis Triage & NASA Sensors */}
+            <div className="order-0 min-w-0 hud-scroll xl:col-start-1 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
+              <HypothesisTriage
+                report={report}
+                activeVariable={activeVariable}
+                onSelectVariable={setActiveVariable}
+                onSymptomChange={(symptom) => handleUpdateParameters({ symptom })}
+                onEcosystemChange={(ecosystem) =>
+                  handleUpdateParameters({ ecosystem })
+                }
+                onWindowChange={(startYear, endYear) =>
+                  handleUpdateParameters({ startYear, endYear })
+                }
+              />
+            </div>
+
+            {/* Bottom-center: 4-node Lag-Cascade waypoint stepper */}
             <div
               id="lag-cascade-section"
-              className={`rounded-xl transition ${
-                viewMode === "lag_cascade"
-                  ? "ring-1 ring-radar-gold/60"
-                  : ""
+              className={`order-3 min-w-0 rounded-xl transition xl:col-start-2 xl:row-start-3 xl:w-full xl:max-w-[860px] xl:justify-self-center xl:pointer-events-auto ${
+                viewMode === "lag_cascade" ? "ring-1 ring-radar-gold/60" : ""
               }`}
             >
               <LagCascadePanel
@@ -586,16 +641,13 @@ export default function NusaShiftDashboardPage() {
                 onSelectVariable={setActiveVariable}
               />
             </div>
-          </div>
 
-          {/* Right 3 Cols: Dipole Coupling Ring + Bounded AI Brief */}
-          <div className="lg:col-span-3 min-w-0">
-            <BoundedAiBrief
-              report={report}
-              onBriefChange={setActiveBrief}
-            />
+            {/* Right: Dipole Coupling Ring + Bounded AI Brief */}
+            <div className="order-4 min-w-0 hud-scroll xl:col-start-3 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
+              <BoundedAiBrief report={report} onBriefChange={setActiveBrief} />
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Bottom 12 Cols: Synchronized Dual-Region Recharts + Scientific Proof Drawer */}
         <div className="space-y-3.5">
