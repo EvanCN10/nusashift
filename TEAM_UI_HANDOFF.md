@@ -31,12 +31,15 @@ npm run build                # Production Next.js build
 | :--- | :--- | :--- |
 | `src/components/NavbarHeader.tsx` | Top brand bar, 4-tab view switcher (`Overview & Map`, `Lag-Cascade`, `Citizen View`, `Scientific Proof`), KPI readouts, Share URL & Export Brief actions | Layout, spacing, hover transitions, keyboard focus polish |
 | `src/components/HypothesisTriage.tsx` | Left 3-col triage matrix (Symptom, Ecosystem, Window 40Y/30Y/20Y), 4 telemetry rows with SVG sparklines, GISTEMP mini-card | Copy tone (100% English), sparkline stroke visuals, tooltip explanations |
-| `src/components/InteractiveWorldMap.tsx` | Center monochrome SVG world map (`click-to-analyze`), 3 curated quick-pills, concentric radar overlays, floating DMS pills, dashed dipole arc | Map SVG land path detail, radar pulse visual polish, pin labels |
+| `src/components/InteractiveWorldMap.tsx` | Full-bleed map viewport switcher: 3D globe (default) or 2D SVG fallback | Switching logic only |
+| `src/components/GlobeViewport.tsx` | `react-globe.gl` 3D globe (client-only, code-split): monochrome land, gradient dipole arc, pulsing radar rings, DMS pills, camera fly-to, +/−/recenter buttons, click-to-analyze, WebGL + `prefers-reduced-motion` handling | Colors, camera altitudes, ring/arc animation timing |
+| `src/components/FlatMapViewport.tsx` | Legacy 2D equirectangular SVG map (the `2D` mode and the automatic no-WebGL fallback) | Map SVG land path detail, pin labels |
+| `src/components/MapControlsBar.tsx` | Floating controls over the globe: curated case pills, `3D / 2D` toggle, `Set Region A/B`, live/cached feed badge, dipole readout, ocean notice | Labels, spacing |
 | `src/components/LagCascadePanel.tsx` | Horizontal 4-node Water–Energy causal stepper (`Solar -> Soil Wetness -> Skin Temp -> Precip`) & *Silent Ecological Stress* coral banner | Connector badge layout, mobile stacking, highlight transitions |
 | `src/components/BoundedAiBrief.tsx` | Right 3-col circular coupling gauge (`88x88` SVG) + *Identified Regime Risks & Causal Brief* inspector (`POST /api/explain`) | Bullet spacing, skeleton polish, badge typography |
 | `src/components/DualRegionCharts.tsx` | Bottom 2-column synchronized Recharts `ComposedChart` (`Z-Score Anomaly` vs `Raw Monthly`) with Pettitt Shift red vertical `ReferenceLine` | Tooltip styling, chart height responsiveness, legend labels |
 | `src/components/ScientificProofDrawer.tsx` | Expandable 10-row non-parametric matrix + GISTEMP v4 Cross-Validation card + formulas + NASA archive links | Print/responsive layout, formula formatting |
-| `src/app/page.tsx` | Master 12-column Bento grid orchestrator, URL query state (`?case=...` / `?latA=...&lonA=...&latB=...&lonB=...`), Share URL & Markdown `.md` brief export | Citizen View translation copy, spacing, responsive breakpoints |
+| `src/app/page.tsx` | Globe hero orchestrator (xl+: HUD panels float over the full-screen globe; below xl: stacked), bottom analytics deck, URL query state (`?case=...` / `?latA=...&lonA=...&latB=...&lonB=...`), Share URL & Markdown `.md` brief export | Citizen View translation copy, spacing, responsive breakpoints |
 
 ---
 
@@ -74,7 +77,7 @@ Wait **not** to expose `.env.local` secrets — `.env.local` stays untracked loc
 
 ## 5. Teammate Sprint Roles (17:00 WIB)
 
-1. **Developer A — Interactive Map & Spatial UI (`InteractiveWorldMap.tsx`):** Refine responsive map proportions, radar ring animations (respecting `prefers-reduced-motion`), and mobile touch usability for clicking `Set Region A` / `Set Region B`.
+1. **Developer A — Interactive Map & Spatial UI (`GlobeViewport.tsx`, `MapControlsBar.tsx`, `FlatMapViewport.tsx`):** Refine responsive map proportions, radar ring animations (respecting `prefers-reduced-motion`), and mobile touch usability for clicking `Set Region A` / `Set Region B`.
 2. **Developer B — Charts & Scientific Matrix (`DualRegionCharts.tsx`, `ScientificProofDrawer.tsx`, `LagCascadePanel.tsx`):** Verify chart readability across 1280px–1920px laptop screens, tooltip legibility, and `Scientific Proof` matrix presentation for judges.
 3. **Developer C — Storytelling, 30s Demo Video & NASA Portal Submission:** Record a crisp `<= 30s` English-subtitled screen capture following this exact sequence:
    - `00:00–00:06`: Show hydrated **Case 1 (Surabaya vs. Turkana)** + *Hypothesis Triage*.

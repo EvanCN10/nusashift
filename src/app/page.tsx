@@ -1,12 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Compass, Loader2, Sprout } from "lucide-react";
 import BoundedAiBrief from "@/components/BoundedAiBrief";
 import DualRegionCharts from "@/components/DualRegionCharts";
 import HypothesisTriage from "@/components/HypothesisTriage";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import LagCascadePanel from "@/components/LagCascadePanel";
+import MapControlsBar, { type MapRenderMode } from "@/components/MapControlsBar";
 import NavbarHeader from "@/components/NavbarHeader";
 import ScientificProofDrawer from "@/components/ScientificProofDrawer";
 import {
@@ -49,6 +57,23 @@ const VALID_VIEWS = new Set<ViewLayerMode>([
   "citizen",
   "scientific",
 ]);
+
+const OVERLAY_LAYOUT_QUERY = "(min-width: 1280px)";
+
+function subscribeOverlayLayout(cb: () => void) {
+  const mql = window.matchMedia(OVERLAY_LAYOUT_QUERY);
+  mql.addEventListener("change", cb);
+  return () => mql.removeEventListener("change", cb);
+}
+
+/** True on xl+ screens, where HUD panels float over the full-bleed globe. */
+function useIsOverlayLayout(): boolean {
+  return useSyncExternalStore(
+    subscribeOverlayLayout,
+    () => window.matchMedia(OVERLAY_LAYOUT_QUERY).matches,
+    () => false
+  );
+}
 
 function buildQueryParams(
   report: DualRegionAnalysisReport,
@@ -212,7 +237,15 @@ export default function NusaShiftDashboardPage() {
   const [activeBrief, setActiveBrief] = useState<CausalExplanationResponse | null>(
     null
   );
+  const [mapMode, setMapMode] = useState<MapRenderMode>("3d");
+  const [is3dAvailable, setIs3dAvailable] = useState(true);
+  const isOverlayLayout = useIsOverlayLayout();
   const hydratedRef = useRef(false);
+
+  const handle3dUnsupported = useCallback(() => {
+    setIs3dAvailable(false);
+    setMapMode("2d");
+  }, []);
 
   const syncUrl = useCallback(
     (nextReport: DualRegionAnalysisReport, nextView: ViewLayerMode) => {
@@ -492,7 +525,7 @@ export default function NusaShiftDashboardPage() {
 
   return (
     <div className="min-h-screen tactical-grid-bg bg-canvas-900 text-ink-primary">
-      <main className="max-w-[1600px] mx-auto px-3 sm:px-4 py-3.5 space-y-3.5">
+      <main className="max-w-[1920px] mx-auto px-3 sm:px-4 py-3.5 space-y-3.5">
         {/* Top Command Header */}
         <NavbarHeader
           report={report}
@@ -502,82 +535,104 @@ export default function NusaShiftDashboardPage() {
           onExportBrief={handleExportBrief}
         />
 
-        {/* Live Telemetry Query Status */}
-        {isAnalyzing ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="hud-panel rounded-lg px-3.5 py-2 border border-dipole-cyan/40 text-xs font-mono text-dipole-cyan flex items-center gap-2"
-          >
-            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
-            <span>
-              Querying NASA POWER API v2 ({report.startYear}–{report.endYear}) for
-              dual-region monthly Earth-system telemetry...
-            </span>
-          </div>
-        ) : null}
-
-        {/* Plain-English Citizen / Community Impact Banner */}
-        {viewMode === "citizen" ? (
-          <section
-            aria-label="Citizen and community climate translation"
-            className="hud-panel rounded-xl px-4 py-3 border border-dipole-cyan/40 flex items-start gap-3"
-          >
-            <Sprout
-              className="w-5 h-5 text-dipole-cyan shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
-                  What This Means for Local Communities &amp; Farmers
-                </h2>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-950 border border-white/10 text-ink-secondary">
-                  CITIZEN VIEW · PLAIN-ENGLISH TRANSLATION
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
-                {buildCitizenTakeaway(report)}
-              </p>
-            </div>
-          </section>
-        ) : null}
-
-        {/* 12-Column Tactical Bento Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-          {/* Left 3 Cols: Hypothesis Triage & NASA Sensors */}
-          <div className="lg:col-span-3 min-w-0">
-            <HypothesisTriage
-              report={report}
-              activeVariable={activeVariable}
-              onSelectVariable={setActiveVariable}
-              onSymptomChange={(symptom) => handleUpdateParameters({ symptom })}
-              onEcosystemChange={(ecosystem) =>
-                handleUpdateParameters({ ecosystem })
-              }
-              onWindowChange={(startYear, endYear) =>
-                handleUpdateParameters({ startYear, endYear })
-              }
-            />
-          </div>
-
-          {/* Center 6 Cols: Interactive World Map + 4-Node Lag Cascade */}
-          <div className="lg:col-span-6 min-w-0 flex flex-col gap-3.5">
+        {/*
+          Hero workspace. On xl+ the globe is full-bleed and the HUD panels float
+          over it (overlay uses pointer-events-none so the globe stays draggable
+          between panels). Below xl the overlay wrapper is display:contents and
+          everything stacks: Triage -> Controls -> Globe -> Lag-Cascade -> Brief.
+        */}
+        <section
+          aria-label="3D teleconnection globe workspace"
+          className="relative flex flex-col gap-3.5 xl:block xl:h-[calc(100dvh-9.25rem)] xl:min-h-[700px] xl:rounded-xl xl:overflow-hidden xl:border xl:border-white/10 xl:bg-canvas-950/40"
+        >
+          {/* Layer 0: Map viewport */}
+          <div className="order-2 relative h-[62vh] min-h-[380px] max-h-[620px] rounded-xl overflow-hidden border border-white/10 bg-canvas-950 xl:absolute xl:inset-0 xl:h-auto xl:min-h-0 xl:max-h-none xl:rounded-none xl:border-0 xl:bg-transparent">
             <InteractiveWorldMap
               report={report}
-              activePinMode={activePinMode}
-              isAnalyzing={isAnalyzing}
-              onPinModeChange={setActivePinMode}
-              onSelectCase={handleSelectCase}
+              mapMode={mapMode}
+              globeFocus={viewMode === "lag_cascade" ? "regionA" : "pair"}
+              globeVerticalOffset={isOverlayLayout ? -60 : 0}
               onMapClickCoordinate={handleMapClickCoordinate}
+              on3dUnsupported={handle3dUnsupported}
             />
+          </div>
 
+          {/* Layer 1: Floating HUD overlay */}
+          <div className="contents xl:pointer-events-none xl:absolute xl:inset-0 xl:z-10 xl:grid xl:grid-cols-[minmax(0,var(--hud-side-l))_minmax(0,1fr)_minmax(0,var(--hud-side-r))] xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:gap-3 xl:p-3">
+            {/* Top-center: map controls, live status, citizen translation */}
+            <div className="order-1 min-w-0 flex flex-col gap-2 xl:col-start-2 xl:row-start-1 xl:w-full xl:max-w-[780px] xl:justify-self-center xl:pointer-events-auto">
+              <MapControlsBar
+                report={report}
+                activePinMode={activePinMode}
+                isAnalyzing={isAnalyzing}
+                mapMode={mapMode}
+                is3dAvailable={is3dAvailable}
+                onPinModeChange={setActivePinMode}
+                onSelectCase={handleSelectCase}
+                onMapModeChange={setMapMode}
+              />
+
+              {isAnalyzing ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="hud-panel-float rounded-lg px-3.5 py-2 border border-dipole-cyan/40 text-xs font-mono text-dipole-cyan flex items-center gap-2"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
+                  <span>
+                    Querying NASA POWER API v2 ({report.startYear}–{report.endYear}) for
+                    dual-region monthly Earth-system telemetry...
+                  </span>
+                </div>
+              ) : null}
+
+              {viewMode === "citizen" ? (
+                <section
+                  aria-label="Citizen and community climate translation"
+                  className="hud-panel-float rounded-xl px-4 py-3 border border-dipole-cyan/40 flex items-start gap-3"
+                >
+                  <Sprout
+                    className="w-5 h-5 text-dipole-cyan shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
+                        What This Means for Local Communities &amp; Farmers
+                      </h2>
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-950 border border-white/10 text-ink-secondary">
+                        CITIZEN VIEW · PLAIN-ENGLISH TRANSLATION
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
+                      {buildCitizenTakeaway(report)}
+                    </p>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+
+            {/* Left: Hypothesis Triage & NASA Sensors */}
+            <div className="order-0 min-w-0 hud-scroll xl:col-start-1 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
+              <HypothesisTriage
+                report={report}
+                activeVariable={activeVariable}
+                onSelectVariable={setActiveVariable}
+                onSymptomChange={(symptom) => handleUpdateParameters({ symptom })}
+                onEcosystemChange={(ecosystem) =>
+                  handleUpdateParameters({ ecosystem })
+                }
+                onWindowChange={(startYear, endYear) =>
+                  handleUpdateParameters({ startYear, endYear })
+                }
+              />
+            </div>
+
+            {/* Bottom-center: 4-node Lag-Cascade waypoint stepper */}
             <div
               id="lag-cascade-section"
-              className={`rounded-xl transition ${
-                viewMode === "lag_cascade"
-                  ? "ring-1 ring-radar-gold/60"
-                  : ""
+              className={`order-3 min-w-0 rounded-xl transition xl:col-start-2 xl:row-start-3 xl:w-full xl:max-w-[860px] xl:justify-self-center xl:pointer-events-auto ${
+                viewMode === "lag_cascade" ? "ring-1 ring-radar-gold/60" : ""
               }`}
             >
               <LagCascadePanel
@@ -586,16 +641,13 @@ export default function NusaShiftDashboardPage() {
                 onSelectVariable={setActiveVariable}
               />
             </div>
-          </div>
 
-          {/* Right 3 Cols: Dipole Coupling Ring + Bounded AI Brief */}
-          <div className="lg:col-span-3 min-w-0">
-            <BoundedAiBrief
-              report={report}
-              onBriefChange={setActiveBrief}
-            />
+            {/* Right: Dipole Coupling Ring + Bounded AI Brief */}
+            <div className="order-4 min-w-0 hud-scroll xl:col-start-3 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
+              <BoundedAiBrief report={report} onBriefChange={setActiveBrief} />
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Bottom 12 Cols: Synchronized Dual-Region Recharts + Scientific Proof Drawer */}
         <div className="space-y-3.5">

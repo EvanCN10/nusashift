@@ -25,7 +25,7 @@ export default function LagCascadePanel({
   return (
     <section
       aria-label="Water-energy lag cascade and silent ecological stress detector"
-      className="hud-panel rounded-xl p-3.5 flex flex-col gap-3"
+      className="hud-panel rounded-xl p-3.5 flex flex-col gap-3 xl:p-2.5 xl:gap-2"
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary flex items-center gap-1.5">
@@ -41,7 +41,7 @@ export default function LagCascadePanel({
       {report.silentEcologicalStressDetected ? (
         <div
           role="alert"
-          className="rounded-lg px-3 py-2.5 bg-drought-coral/15 border border-drought-coral/50 text-xs text-ink-primary flex items-start gap-2.5"
+          className="rounded-lg px-3 py-2.5 xl:py-1.5 bg-drought-coral/15 border border-drought-coral/50 text-xs text-ink-primary flex items-start gap-2.5"
         >
           <AlertTriangle
             className="w-4 h-4 text-drought-coral shrink-0 mt-0.5"
@@ -55,7 +55,7 @@ export default function LagCascadePanel({
           </div>
         </div>
       ) : (
-        <div className="hud-well rounded-lg px-3 py-2 border border-white/10 text-xs text-ink-secondary flex items-center gap-2">
+        <div className="hud-well rounded-lg px-3 py-2 xl:py-1.5 border border-white/10 text-xs text-ink-secondary flex items-center gap-2">
           <CheckCircle2 className="w-3.5 h-3.5 text-nominal-green shrink-0" aria-hidden="true" />
           <span>{report.silentStressReason}</span>
         </div>
@@ -85,14 +85,14 @@ export default function LagCascadePanel({
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => onSelectVariable(code)}
-                className={`hud-well hover:bg-panel-800 rounded-lg p-2.5 flex flex-col items-center text-center transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-drought-orange ${
+                className={`hud-well hover:bg-panel-800 rounded-lg p-2.5 xl:p-1.5 flex flex-col items-center text-center transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-drought-orange ${
                   isSelected
                     ? "border-drought-orange/60 bg-panel-800"
                     : "border-white/10"
                 }`}
               >
                 <div
-                  className={`w-9 h-9 rounded-full border-2 flex items-center justify-center mb-1.5 ${ringClass}`}
+                  className={`w-9 h-9 xl:w-7 xl:h-7 rounded-full border-2 flex items-center justify-center mb-1.5 xl:mb-1 ${ringClass}`}
                 >
                   {isSilentNode ? (
                     <AlertTriangle className="w-4 h-4" aria-hidden="true" />
@@ -110,7 +110,7 @@ export default function LagCascadePanel({
                   {meta.shortLabel}
                 </div>
 
-                <div className="mt-1.5 pt-1.5 border-t border-white/10 w-full font-mono tabular-nums text-[10px] space-y-0.5">
+                <div className="mt-1.5 pt-1.5 xl:mt-1 xl:pt-1 border-t border-white/10 w-full font-mono tabular-nums text-[10px] space-y-0.5">
                   <div className="text-ink-primary">
                     τ = {trend.isAvailable ? trend.mannKendallTau.toFixed(2) : "N/A"}
                   </div>
@@ -119,7 +119,7 @@ export default function LagCascadePanel({
                       ? `${trend.sensSlopePerDecade > 0 ? "+" : ""}${trend.sensSlopePerDecade.toFixed(3)}/dec`
                       : "Ocean N/A"}
                   </div>
-                  <div className="text-[9px] text-drought-coral">
+                  <div className="text-[9px] text-drought-coral whitespace-nowrap tracking-tight">
                     Shift: {trend.changePointDate}
                   </div>
                 </div>
