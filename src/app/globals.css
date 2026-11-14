@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas-950: #090B0E;
+  --color-canvas-900: #0E1116;
+  --color-panel-850: #14181F;
+  --color-panel-800: #1B2029;
+  --color-panel-700: #262C38;
+
+  --color-ink-primary: #F3F5F8;
+  --color-ink-secondary: #9BA3B2;
+  --color-ink-muted: #5E6778;
+
+  --color-drought-orange: #F97316;
+  --color-drought-coral: #EF4444;
+  --color-radar-gold: #EAB308;
+  --color-nominal-green: #22C55E;
+  --color-dipole-cyan: #06B6D4;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+@layer utilities {
+  .hud-panel {
+    background-color: rgba(20, 24, 31, 0.88);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  }
+
+  .hud-well {
+    background-color: #090B0E;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .tactical-grid-bg {
+    background-size: 32px 32px;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  }
+}
+
+@media (forced-colors: active) {
+  .hud-panel,
+  .hud-well {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+}
+
+.proof-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-inline-size: 100%;
+  container-type: inline-size;
+}
+
+.proof-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.proof-table thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background-color: #0e1116;
+}
+
+.proof-table tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background-color: #14181f;
+}
+
+@container (width < 760px) {
+  .proof-table,
+  .proof-table thead,
+  .proof-table tbody,
+  .proof-table tr,
+  .proof-table th,
+  .proof-table td {
+    display: block;
+  }
+
+  .proof-table thead {
+    display: none;
+  }
+
+  .proof-table tbody tr {
+    margin-block-end: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .proof-table tbody th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    background-color: #1b2029;
+  }
+
+  .proof-table td::before {
+    content: attr(data-col-label) ": ";
+    display: inline-block;
+    min-inline-size: 10.5rem;
+    color: #9ba3b2;
+    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-ping {
+    animation: none;
+  }
+}
