@@ -63,6 +63,23 @@
   }
 }
 
+/* KaTeX: match surrounding size/color and ignore HUD label casing & tracking. */
+.katex {
+  font-size: 1.08em;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
+.katex-display {
+  margin: 0.35em 0;
+}
+
+.katex-display > .katex {
+  font-size: 1.12em;
+  white-space: nowrap;
+}
+
 @media (forced-colors: active) {
   .hud-panel,
   .hud-panel-float,

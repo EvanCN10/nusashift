@@ -27,6 +27,8 @@ import {
   WINDOW_OPTIONS,
 } from "@/data/nasaVariables";
 import { generateDeterministicCausalBrief } from "@/lib/causalFallback";
+import MathText from "@/components/math/MathText";
+import { texNum, texP, withMarkdownMath } from "@/components/math/texFormat";
 import { formatDMS } from "@/lib/nasaPowerClient";
 import type {
   CausalExplanationResponse,
@@ -139,16 +141,14 @@ function buildMarkdownBrief(
       if (!trend.isAvailable) {
         return `| ${code} | ${label} | ${trend.sampleCount} | N/A | N/A | Ocean Grid N/A | — | — |`;
       }
-      const pStr =
-        trend.pValue < 0.001 ? trend.pValue.toExponential(2) : trend.pValue.toFixed(4);
-      const ciStr = `[${trend.confidenceInterval95[0].toFixed(4)}, ${trend.confidenceInterval95[1].toFixed(4)}]`;
-      return `| ${code} | ${label} | ${trend.sampleCount} | ${trend.mannKendallTau.toFixed(3)} | ${pStr} | ${trend.sensSlopePerDecade.toFixed(4)} ${trend.unit}/dec | ${ciStr} | ${trend.changePointDate} (K=${Math.round(trend.pettittStatistic)}) |`;
+      const ciStr = `$[${texNum(trend.confidenceInterval95[0], 4)},\\ ${texNum(trend.confidenceInterval95[1], 4)}]$`;
+      return `| ${code} | ${label} | ${trend.sampleCount} | $${texNum(trend.mannKendallTau, 3)}$ | $${texP(trend.pValue)}$ | $${texNum(trend.sensSlopePerDecade, 4, true)}$ ${trend.unit}/dec | ${ciStr} | ${trend.changePointDate} ($K_T = ${Math.round(trend.pettittStatistic)}$) |`;
     });
   });
 
   const cascadeLines = report.lagCascadeA.map(
     (link) =>
-      `- **${link.fromVariable} -> ${link.toVariable}:** +${link.optimalLagMonths} mo lag, r = ${link.correlationR.toFixed(3)}, p = ${link.pValue.toExponential(2)} (${link.interpretation})`
+      `- **${link.fromVariable} -> ${link.toVariable}:** $k^{*} = +${link.optimalLagMonths}$ mo, $r = ${texNum(link.correlationR, 3)}$, $${texP(link.pValue)}$ (${withMarkdownMath(link.interpretation)})`
   );
 
   const gv = report.gistempValidation;
@@ -163,32 +163,32 @@ function buildMarkdownBrief(
     `- **Data Feed:** ${report.dataSourceTag}`,
     `- **Region A (Target):** ${report.regionA.name} (${formatDMS(report.regionA.lat, report.regionA.lon)})`,
     `- **Region B (Paired):** ${report.regionB.name} (${formatDMS(report.regionB.lat, report.regionB.lon)})`,
-    `- **Dipole Correlation:** r = ${report.dipoleCorrelationR.toFixed(3)}, p = ${report.dipolePValue.toExponential(2)}, Opposite-Sign = ${report.isOppositeDirection ? "YES" : "NO"}`,
-    `- **Silent Ecological Stress:** ${report.silentEcologicalStressDetected ? "DETECTED" : "NOT DETECTED"} — ${report.silentStressReason}`,
+    `- **Dipole Correlation:** $r = ${texNum(report.dipoleCorrelationR, 3)}$, $${texP(report.dipolePValue)}$, Opposite-Sign = ${report.isOppositeDirection ? "YES" : "NO"}`,
+    `- **Silent Ecological Stress:** ${report.silentEcologicalStressDetected ? "DETECTED" : "NOT DETECTED"} — ${withMarkdownMath(report.silentStressReason)}`,
     ``,
     `## Causal Synthesis (${brief.source})`,
-    `### ${brief.headline}`,
+    `### ${withMarkdownMath(brief.headline)}`,
     ``,
     `### Physical Teleconnection Mechanism`,
-    ...brief.physicalMechanism.map((m) => `- ${m}`),
+    ...brief.physicalMechanism.map((m) => `- ${withMarkdownMath(m)}`),
     ``,
     `### Regional Mitigation Recommendations`,
-    ...brief.mitigationActions.map((a) => `- ${a}`),
+    ...brief.mitigationActions.map((a) => `- ${withMarkdownMath(a)}`),
     ``,
     `## Water-Energy Lag-Cascade (Region A)`,
     ...cascadeLines,
     ``,
     `## Non-Parametric Statistical Proof Matrix (Deseasonalized Monthly Anomalies)`,
-    `| Variable | Region | N | Mann-Kendall tau | p-value | Sen's Slope / Decade | 95% CI | Pettitt Shift |`,
+    `| Variable | Region | N | Mann-Kendall $\\tau$ | $p$-value | Sen's Slope $Q_{\\text{dec}}$ | 95% CI | Pettitt Shift ($K_T$) |`,
     `| :--- | :--- | ---: | ---: | ---: | ---: | :--- | :--- |`,
     ...matrixLines,
     ``,
     `## NASA GISTEMP v4 Cross-Validation`,
     `- **Dataset:** ${gv.datasetName} (${gv.period})`,
-    `- **Published Reference Slope:** +${gv.publishedReferenceSlopePerDecade.toFixed(4)} °C/decade`,
-    `- **Engine Computed Slope:** +${gv.computedSlopePerDecade.toFixed(4)} °C/decade`,
+    `- **Published Reference Slope:** $${texNum(gv.publishedReferenceSlopePerDecade, 4, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}$`,
+    `- **Engine Computed Slope:** $${texNum(gv.computedSlopePerDecade, 4, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}$`,
     `- **Calibration Deviation:** ${gv.deviationPct.toFixed(2)}% (Calibrated: ${gv.isCalibrated ? "YES" : "NO"})`,
-    `- **GISTEMP Mann-Kendall tau:** ${gv.mannKendallTau.toFixed(3)} (p = ${gv.mannKendallPValue.toExponential(2)})`,
+    `- **GISTEMP Mann-Kendall:** $\\tau =${texNum(gv.mannKendallTau, 3)}$, $${texP(gv.mannKendallPValue)}$`,
     ``,
   ].join("\n");
 }
@@ -605,7 +605,7 @@ export default function NusaShiftDashboardPage() {
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
-                      {buildCitizenTakeaway(report)}
+                      <MathText text={buildCitizenTakeaway(report)} />
                     </p>
                   </div>
                 </section>

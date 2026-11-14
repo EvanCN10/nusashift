@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { CheckCircle2, Info, ShieldAlert } from "lucide-react";
+import Tex from "@/components/math/Tex";
+import { texNum } from "@/components/math/texFormat";
 import {
   ECOSYSTEM_OPTIONS,
   NASA_VARIABLES,
@@ -210,12 +212,12 @@ export default function HypothesisTriage({
                 : "#22C55E";
 
             const sigBadge = !trend.isAvailable
-              ? { label: "OCEAN N/A", cls: "text-ink-secondary bg-white/5" }
+              ? { label: "OCEAN N/A", tex: null, cls: "text-ink-secondary bg-white/5" }
               : trend.significanceLevel === "HIGHLY_SIGNIFICANT"
-              ? { label: "p < 0.01", cls: "text-drought-coral bg-drought-coral/15" }
+              ? { label: null, tex: "p < 0.01", cls: "text-drought-coral bg-drought-coral/15" }
               : trend.significanceLevel === "SIGNIFICANT"
-              ? { label: "p < 0.05", cls: "text-radar-gold bg-radar-gold/15" }
-              : { label: "Noise", cls: "text-ink-secondary bg-white/5" };
+              ? { label: null, tex: "p < 0.05", cls: "text-radar-gold bg-radar-gold/15" }
+              : { label: "Noise", tex: null, cls: "text-ink-secondary bg-white/5" };
 
             return (
               <button
@@ -276,7 +278,7 @@ export default function HypothesisTriage({
                   <span
                     className={`inline-block font-mono text-[9px] px-1.5 py-0.5 rounded ${sigBadge.cls}`}
                   >
-                    ■ {sigBadge.label}
+                    ■ {sigBadge.tex ? <Tex math={sigBadge.tex} /> : sigBadge.label}
                   </span>
                 </div>
               </button>
@@ -319,7 +321,9 @@ export default function HypothesisTriage({
               NASA OLS Reference
             </div>
             <div className="text-ink-primary font-semibold">
-              +{gistemp.publishedReferenceSlopePerDecade.toFixed(3)} °C/dec
+              <Tex
+                math={`${texNum(gistemp.publishedReferenceSlopePerDecade, 3, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}`}
+              />
             </div>
           </div>
           <div>
@@ -327,12 +331,14 @@ export default function HypothesisTriage({
               Engine Sen&apos;s Slope
             </div>
             <div className="text-nominal-green font-semibold">
-              +{gistemp.computedSlopePerDecade.toFixed(3)} °C/dec
+              <Tex
+                math={`${texNum(gistemp.computedSlopePerDecade, 3, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}`}
+              />
             </div>
           </div>
           <div className="col-span-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-ink-secondary">
             <span>
-              MK τ = {gistemp.mannKendallTau.toFixed(3)} (p &lt; 0.001)
+              MK <Tex math={`\\tau = ${texNum(gistemp.mannKendallTau, 3)}\\;(p < 0.001)`} />
             </span>
             <span className="text-ink-primary">
               Dev: {gistemp.deviationPct.toFixed(2)}%

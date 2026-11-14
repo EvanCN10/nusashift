@@ -1,6 +1,8 @@
 "use client";
 
 import { Globe2, Loader2, MapPin, Waves } from "lucide-react";
+import Tex from "@/components/math/Tex";
+import { texNum } from "@/components/math/texFormat";
 import { CURATED_CASES } from "@/data/cachedCases";
 import type { DualRegionAnalysisReport } from "@/types/climate";
 
@@ -187,7 +189,7 @@ export default function MapControlsBar({
           </span>
         </span>
         <span className="font-mono tabular-nums text-ink-primary">
-          Dipole r = {report.dipoleCorrelationR.toFixed(2)} ·{" "}
+          Dipole <Tex math={`r = ${texNum(report.dipoleCorrelationR, 2)}`} /> ·{" "}
           <span className={report.isOppositeDirection ? "text-drought-orange" : "text-dipole-cyan"}>
             {report.isOppositeDirection ? "OPPOSITE-SIGN" : "COUPLED"}
           </span>

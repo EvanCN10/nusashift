@@ -2,6 +2,8 @@
 
 import { BookOpenCheck, ChevronDown, ChevronUp, ExternalLink, FlaskConical } from "lucide-react";
 import { NASA_CHALLENGE_RESOURCES, NASA_VARIABLES } from "@/data/nasaVariables";
+import Tex from "@/components/math/Tex";
+import { texNum, texP } from "@/components/math/texFormat";
 import { formatDMS } from "@/lib/nasaPowerClient";
 import type {
   DualRegionAnalysisReport,
@@ -38,9 +40,84 @@ function getSeverityBadgeStyle(sig: SignificanceLevel, isAvailable: boolean): st
   return "bg-white/5 text-ink-secondary border border-white/15";
 }
 
-function formatPVal(p: number): string {
-  return p < 0.001 ? p.toExponential(2) : p.toFixed(4);
+const DEG_C_PER_DECADE = "\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}";
+
+interface FormulaCard {
+  title: string;
+  accent: string;
+  wide?: boolean;
+  equations: string[];
+  note: React.ReactNode;
 }
+
+/**
+ * Formal statements of exactly what src/lib/statsEngine.ts computes.
+ * Keep these in sync with that file if the engine ever changes.
+ */
+const FORMULA_CARDS: FormulaCard[] = [
+  {
+    title: "1. Monthly Z-Score Deseasonalization",
+    accent: "text-drought-orange",
+    equations: [
+      "Z_{y,m} = \\dfrac{X_{y,m} - \\bar{X}_m}{s_m}, \\quad m \\in \\{1, \\dots, 12\\}",
+      "s_m = \\sqrt{\\dfrac{1}{N_m - 1} \\sum_{y} \\left(X_{y,m} - \\bar{X}_m\\right)^2}",
+    ],
+    note: "Per-calendar-month mean and sample standard deviation remove the wet/dry monsoon cycle before any trend test.",
+  },
+  {
+    title: "2. Theil–Sen Slope & 95% CI",
+    accent: "text-dipole-cyan",
+    equations: [
+      "Q_{\\text{dec}} = 120 \\cdot \\operatorname*{median}_{1 \\le i < j \\le n} \\left( \\dfrac{x_j - x_i}{j - i} \\right)",
+      "C_\\alpha = 1.96 \\sqrt{\\operatorname{Var}(S)}, \\quad \\left[\\, Q_{(\\lfloor (N - C_\\alpha)/2 \\rfloor)},\\; Q_{(\\lceil (N + C_\\alpha)/2 \\rceil)} \\,\\right]",
+    ],
+    note: (
+      <>
+        <Tex math="N = n(n-1)/2" /> ordered pairwise slopes; <Tex math="\times 120" /> converts
+        months to decades.
+      </>
+    ),
+  },
+  {
+    title: "3. Mann–Kendall Trend Test (tie-corrected)",
+    accent: "text-nominal-green",
+    wide: true,
+    equations: [
+      "S = \\sum_{i=1}^{n-1} \\sum_{j=i+1}^{n} \\operatorname{sgn}\\!\\left(x_j - x_i\\right), \\qquad \\tau = \\dfrac{2S}{n(n-1)}",
+      "\\operatorname{Var}(S) = \\dfrac{1}{18} \\left[ n(n-1)(2n+5) - \\sum_{g} t_g (t_g - 1)(2t_g + 5) \\right]",
+      "Z = \\dfrac{S - \\operatorname{sgn}(S)}{\\sqrt{\\operatorname{Var}(S)}}, \\qquad p = \\operatorname{erfc}\\!\\left( \\dfrac{|Z|}{\\sqrt{2}} \\right)",
+    ],
+    note: (
+      <>
+        <Tex math="t_g" /> is the size of tied group <Tex math="g" />. Significance tiers:{" "}
+        <Tex math="p < 0.01" /> (highly significant), <Tex math="p < 0.05" /> (significant).
+      </>
+    ),
+  },
+  {
+    title: "4. Pettitt Non-Parametric Change-Point",
+    accent: "text-drought-coral",
+    equations: [
+      "U_t = 2 \\sum_{i=1}^{t} R_i - t\\,(n+1)",
+      "K_T = \\max_{1 \\le t < n} \\left| U_t \\right|, \\qquad \\hat{t} = \\operatorname*{arg\\,max}_{t} \\left| U_t \\right|",
+    ],
+    note: (
+      <>
+        <Tex math="R_i" /> is the rank of <Tex math="Z_i" /> (ties get average ranks);{" "}
+        <Tex math="\hat{t}" /> is the regime-shift month (YYYY-MM).
+      </>
+    ),
+  },
+  {
+    title: "5. Lead–Lag Cascade & Dipole Correlation",
+    accent: "text-radar-gold",
+    equations: [
+      "r_{XY}(k) = \\operatorname{corr}\\!\\left(X_t,\\, Y_{t+k}\\right), \\qquad k^{*} = \\operatorname*{arg\\,max}_{0 \\le k \\le 6} \\left| r_{XY}(k) \\right|",
+      "t = r \\sqrt{\\dfrac{n-2}{1-r^2}} \\;\\sim\\; t_{\\,n-2}",
+    ],
+    note: "Two-sided Pearson test on deseasonalized anomalies; detects root-zone drying months before rainfall collapses.",
+  },
+];
 
 export default function ScientificProofDrawer({
   report,
@@ -141,7 +218,7 @@ export default function ScientificProofDrawer({
                     N
                   </th>
                   <th scope="col" className="px-2.5 py-2 whitespace-nowrap">
-                    MK Z &amp; p-val
+                    MK <Tex math="Z" /> &amp; <Tex math="p" />
                   </th>
                   <th scope="col" className="px-2.5 py-2">
                     Sen&apos;s Slope / Dec
@@ -150,7 +227,7 @@ export default function ScientificProofDrawer({
                     95% CI
                   </th>
                   <th scope="col" className="px-2.5 py-2">
-                    Pettitt Shift (K_T &amp; Date)
+                    Pettitt Shift (<Tex math="K_T" /> &amp; Date)
                   </th>
                 </tr>
               </thead>
@@ -174,9 +251,11 @@ export default function ScientificProofDrawer({
                           <span
                             className={`w-16 h-7 rounded font-mono text-[11px] font-bold flex items-center justify-center shrink-0 tabular-nums ${badgeStyle}`}
                           >
-                            {trend.isAvailable
-                              ? `τ=${trend.mannKendallTau.toFixed(2)}`
-                              : "N/A"}
+                            {trend.isAvailable ? (
+                              <Tex math={`\\tau = ${texNum(trend.mannKendallTau, 2)}`} />
+                            ) : (
+                              "N/A"
+                            )}
                           </span>
                           <div className="min-w-0">
                             <div className="font-mono font-semibold text-ink-primary">
@@ -212,11 +291,10 @@ export default function ScientificProofDrawer({
                         {trend.isAvailable ? (
                           <div>
                             <div className="text-ink-primary">
-                              Z = {trend.zScore > 0 ? "+" : ""}
-                              {trend.zScore.toFixed(2)}
+                              <Tex math={`Z = ${texNum(trend.zScore, 2, true)}`} />
                             </div>
                             <div className="text-[10px] text-ink-secondary">
-                              p = {formatPVal(trend.pValue)}
+                              <Tex math={texP(trend.pValue)} />
                             </div>
                           </div>
                         ) : (
@@ -249,7 +327,9 @@ export default function ScientificProofDrawer({
                               {trend.changePointDate}
                             </div>
                             <div className="text-[11px] text-ink-muted">
-                              K_T = {Math.round(trend.pettittStatistic).toLocaleString("en-US")}
+                              <Tex
+                                math={`K_T = ${Math.round(trend.pettittStatistic).toLocaleString("en-US").replace(/,/g, "{,}")}`}
+                              />
                             </div>
                           </div>
                         ) : (
@@ -291,7 +371,7 @@ export default function ScientificProofDrawer({
                     Published Ref Slope
                   </dt>
                   <dd className="text-ink-primary font-bold tabular-nums mt-0.5">
-                    +{gv.publishedReferenceSlopePerDecade.toFixed(4)} °C/dec
+                    <Tex math={`${texNum(gv.publishedReferenceSlopePerDecade, 4, true)}${DEG_C_PER_DECADE}`} />
                   </dd>
                 </div>
                 <div className="bg-canvas-950 rounded p-2 border border-white/5">
@@ -299,7 +379,7 @@ export default function ScientificProofDrawer({
                     Engine Computed Slope
                   </dt>
                   <dd className="text-nominal-green font-bold tabular-nums mt-0.5">
-                    +{gv.computedSlopePerDecade.toFixed(4)} °C/dec
+                    <Tex math={`${texNum(gv.computedSlopePerDecade, 4, true)}${DEG_C_PER_DECADE}`} />
                   </dd>
                 </div>
                 <div className="bg-canvas-950 rounded p-2 border border-white/5">
@@ -307,7 +387,7 @@ export default function ScientificProofDrawer({
                     Deviation %
                   </dt>
                   <dd className="text-ink-primary font-bold tabular-nums mt-0.5">
-                    {gv.deviationPct.toFixed(2)}%
+                    <Tex math={`${gv.deviationPct.toFixed(2)}\\%`} />
                   </dd>
                 </div>
                 <div className="bg-canvas-950 rounded p-2 border border-white/5">
@@ -315,7 +395,9 @@ export default function ScientificProofDrawer({
                     GISTEMP Mann-Kendall
                   </dt>
                   <dd className="text-ink-primary font-bold tabular-nums mt-0.5">
-                    τ={gv.mannKendallTau.toFixed(3)} · p={formatPVal(gv.mannKendallPValue)}
+                    <Tex
+                      math={`\\tau = ${texNum(gv.mannKendallTau, 3)},\\; ${texP(gv.mannKendallPValue)}`}
+                    />
                   </dd>
                 </div>
               </dl>
@@ -328,53 +410,24 @@ export default function ScientificProofDrawer({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="bg-canvas-950 rounded p-2.5 border border-white/5">
-                  <div className="font-mono text-[11px] font-semibold text-drought-orange">
-                    1. Monthly Z-Score Deseasonalization
+                {FORMULA_CARDS.map((card) => (
+                  <div
+                    key={card.title}
+                    className={`bg-canvas-950 rounded p-2.5 border border-white/5 min-w-0 ${
+                      card.wide ? "sm:col-span-2" : ""
+                    }`}
+                  >
+                    <div className={`font-mono text-[11px] font-semibold ${card.accent}`}>
+                      {card.title}
+                    </div>
+                    <div className="mt-1.5 space-y-1 overflow-x-auto overflow-y-hidden text-ink-primary hud-scroll">
+                      {card.equations.map((eq) => (
+                        <Tex key={eq} math={eq} display />
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-1 leading-relaxed">{card.note}</p>
                   </div>
-                  <p className="font-mono text-[11px] text-ink-secondary mt-1">
-                    Z_(y,m) = (X_(y,m) − μ_m) / σ_m
-                  </p>
-                  <p className="text-[11px] text-ink-muted mt-0.5">
-                    Strips wet/dry monsoon cycles across m ∈ &#123;1..12&#125;.
-                  </p>
-                </div>
-
-                <div className="bg-canvas-950 rounded p-2.5 border border-white/5">
-                  <div className="font-mono text-[11px] font-semibold text-dipole-cyan">
-                    2. Mann-Kendall &amp; Sen&apos;s Slope
-                  </div>
-                  <p className="font-mono text-[11px] text-ink-secondary mt-1">
-                    Q_dec = median((x_j − x_i) / (j − i)) × 120
-                  </p>
-                  <p className="text-[11px] text-ink-muted mt-0.5">
-                    Tie-corrected Var(S) and rank-based 95% confidence interval.
-                  </p>
-                </div>
-
-                <div className="bg-canvas-950 rounded p-2.5 border border-white/5">
-                  <div className="font-mono text-[11px] font-semibold text-drought-coral">
-                    3. Pettitt Non-Parametric Change-Point
-                  </div>
-                  <p className="font-mono text-[11px] text-ink-secondary mt-1">
-                    U_(t,T) = ΣΣ sgn(x_i − x_j), K_T = max|U|
-                  </p>
-                  <p className="text-[11px] text-ink-muted mt-0.5">
-                    Isolates sharpest historical regime shift month (YYYY-MM).
-                  </p>
-                </div>
-
-                <div className="bg-canvas-950 rounded p-2.5 border border-white/5">
-                  <div className="font-mono text-[11px] font-semibold text-radar-gold">
-                    4. Cross-Correlation Lead-Lag Cascade
-                  </div>
-                  <p className="font-mono text-[11px] text-ink-secondary mt-1">
-                    r_XY(k) = corr(X_t, Y_(t+k)), k ∈ [0..6] mo
-                  </p>
-                  <p className="text-[11px] text-ink-muted mt-0.5">
-                    Detects root-zone soil drying before rainfall collapses.
-                  </p>
-                </div>
+                ))}
               </div>
 
               {/* Verified Partner & NASA Challenge Resources */}
