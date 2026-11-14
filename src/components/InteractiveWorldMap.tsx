@@ -22,6 +22,7 @@ interface InteractiveWorldMapProps {
   report: DualRegionAnalysisReport;
   mapMode: MapRenderMode;
   globeFocus: GlobeFocus;
+  globeHorizontalOffset?: number;
   globeVerticalOffset?: number;
   onMapClickCoordinate: (lat: number, lon: number) => void;
   on3dUnsupported: () => void;
@@ -32,6 +33,7 @@ export default function InteractiveWorldMap({
   report,
   mapMode,
   globeFocus,
+  globeHorizontalOffset,
   globeVerticalOffset,
   onMapClickCoordinate,
   on3dUnsupported,
@@ -45,12 +47,17 @@ export default function InteractiveWorldMap({
         <GlobeViewport
           report={report}
           focus={globeFocus}
+          horizontalOffset={globeHorizontalOffset}
           verticalOffset={globeVerticalOffset}
           onMapClickCoordinate={onMapClickCoordinate}
           onUnsupported={on3dUnsupported}
         />
       ) : (
-        <FlatMapViewport report={report} onMapClickCoordinate={onMapClickCoordinate} />
+        <div className="h-full w-full lg:flex lg:items-center lg:justify-center lg:px-8">
+          <div className="relative h-full w-full lg:h-[64%] lg:w-[54%] lg:max-w-[780px] lg:overflow-hidden lg:rounded-xl lg:border lg:border-white/10">
+            <FlatMapViewport report={report} onMapClickCoordinate={onMapClickCoordinate} />
+          </div>
+        </div>
       )}
     </div>
   );

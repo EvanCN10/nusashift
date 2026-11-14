@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "katex/dist/katex.min.css";
+import "lenis/dist/lenis.css";
+import LenisProvider from "@/components/LenisProvider";
 import "./globals.css";
 
-const inter = Inter({
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
   display: "swap",
 });
 
@@ -30,10 +40,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} dark`}
+      className={`${instrumentSerif.variable} ${geist.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen bg-canvas-900 text-ink-primary font-sans antialiased selection:bg-drought-orange/30">
-        {children}
+        <LenisProvider>{children}</LenisProvider>
       </body>
     </html>
   );

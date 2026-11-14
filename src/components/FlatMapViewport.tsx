@@ -47,7 +47,7 @@ const WORLD_POLYGONS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = 
   [
     [-56, 76], [-38, 82], [-18, 81], [-21, 70], [-43, 60], [-52, 67],
   ],
-  // South America (highlighting Piura / Peru west bulge & Amazon)
+  // South America (Peru coast & Amazon)
   [
     [-78, 9], [-72, 12], [-62, 10], [-50, 1], [-35, -6], [-38, -14],
     [-41, -22], [-48, -26], [-53, -33], [-62, -41], [-67, -50], [-68, -55],
@@ -65,7 +65,7 @@ const WORLD_POLYGONS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = 
   [
     [-6, 50], [-5, 58], [-1, 58], [1, 52], [-3, 50],
   ],
-  // Africa (highlighting East Africa / Turkana Kenya)
+  // Africa (East Africa & Rift Valley)
   [
     [-17, 15], [-16, 28], [-6, 36], [10, 37], [12, 33], [25, 32], [32, 31],
     [35, 26], [43, 12], [51, 12], [45, 2], [40, -5], [40, -15], [35, -24],
@@ -97,7 +97,7 @@ const WORLD_POLYGONS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = 
   [
     [95, 5], [99, 3], [104, -2], [106, -6], [103, -5], [98, 1],
   ],
-  // Indonesia: Java (Surabaya / East Java / Brantas Basin!)
+  // Indonesia: Java & East Java corridor
   [
     [105.5, -6.1], [111.5, -6.8], [114.5, -7.8], [114.2, -8.7], [108.5, -7.8], [105.5, -7.0],
   ],

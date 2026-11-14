@@ -8,35 +8,46 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Compass, Loader2, Sprout } from "lucide-react";
+import { ArrowDown, Compass, SlidersHorizontal } from "lucide-react";
+import { useLenis } from "lenis/react";
 import BoundedAiBrief from "@/components/BoundedAiBrief";
 import DualRegionCharts from "@/components/DualRegionCharts";
+import FloatingToolsPanel from "@/components/FloatingToolsPanel";
 import HypothesisTriage from "@/components/HypothesisTriage";
 import InteractiveWorldMap from "@/components/InteractiveWorldMap";
 import LagCascadePanel from "@/components/LagCascadePanel";
+import { usePrefersReducedMotion } from "@/components/LenisProvider";
 import MapControlsBar, { type MapRenderMode } from "@/components/MapControlsBar";
 import NavbarHeader from "@/components/NavbarHeader";
+import Reveal from "@/components/Reveal";
 import ScientificProofDrawer from "@/components/ScientificProofDrawer";
+import ScrollCue from "@/components/ScrollCue";
+import StickySectionNav from "@/components/StickySectionNav";
+import MathText from "@/components/math/MathText";
+import Tex from "@/components/math/Tex";
+import { texNum, texP, withMarkdownMath } from "@/components/math/texFormat";
 import {
   CURATED_CASES,
   getPrecomputedCaseReport,
 } from "@/data/cachedCases";
 import {
-  NASA_VARIABLES,
   SYMPTOM_PRESETS,
   WINDOW_OPTIONS,
 } from "@/data/nasaVariables";
 import { generateDeterministicCausalBrief } from "@/lib/causalFallback";
-import MathText from "@/components/math/MathText";
-import { texNum, texP, withMarkdownMath } from "@/components/math/texFormat";
 import { formatDMS } from "@/lib/nasaPowerClient";
+import {
+  buildVerdictMetrics,
+  buildVerdictPlainSummary,
+  buildVerdictSentence,
+  getVerdictBadge,
+} from "@/lib/narrative";
 import type {
   CausalExplanationResponse,
   DualRegionAnalysisReport,
   EcosystemType,
   NasaVariableCode,
   SymptomId,
-  ViewLayerMode,
 } from "@/types/climate";
 
 const VALID_SYMPTOMS = new Set<SymptomId>([
@@ -53,33 +64,26 @@ const VALID_ECOSYSTEMS = new Set<EcosystemType>([
   "coastal_delta",
 ]);
 
-const VALID_VIEWS = new Set<ViewLayerMode>([
-  "overview",
-  "lag_cascade",
-  "citizen",
-  "scientific",
-]);
+const DESKTOP_HERO_QUERY = "(min-width: 1024px)";
 
-const OVERLAY_LAYOUT_QUERY = "(min-width: 1280px)";
-
-function subscribeOverlayLayout(cb: () => void) {
-  const mql = window.matchMedia(OVERLAY_LAYOUT_QUERY);
+function subscribeDesktopHero(cb: () => void) {
+  const mql = window.matchMedia(DESKTOP_HERO_QUERY);
   mql.addEventListener("change", cb);
   return () => mql.removeEventListener("change", cb);
 }
 
-/** True on xl+ screens, where HUD panels float over the full-bleed globe. */
-function useIsOverlayLayout(): boolean {
+/** True on lg+ screens, where the hero composes as a single 100dvh full-bleed stage. */
+function useIsDesktopHero(): boolean {
   return useSyncExternalStore(
-    subscribeOverlayLayout,
-    () => window.matchMedia(OVERLAY_LAYOUT_QUERY).matches,
+    subscribeDesktopHero,
+    () => window.matchMedia(DESKTOP_HERO_QUERY).matches,
     () => false
   );
 }
 
 function buildQueryParams(
   report: DualRegionAnalysisReport,
-  viewMode: ViewLayerMode
+  includeScientificView = false
 ): string {
   const params = new URLSearchParams();
   const isCurated = CURATED_CASES.some((c) => c.caseId === report.caseId);
@@ -97,8 +101,8 @@ function buildQueryParams(
   params.set("ecosystem", report.ecosystem);
   params.set("startYear", String(report.startYear));
   params.set("endYear", String(report.endYear));
-  if (viewMode !== "overview") {
-    params.set("view", viewMode);
+  if (includeScientificView) {
+    params.set("view", "scientific");
   }
 
   return `?${params.toString()}`;
@@ -193,34 +197,44 @@ function buildMarkdownBrief(
   ].join("\n");
 }
 
-function buildCitizenTakeaway(report: DualRegionAnalysisReport): string {
-  const gwetA = report.trendsA.GWETROOT;
-  const precA = report.trendsA.PRECTOTCORR;
-  const primaryA = report.trendsA[report.primaryVariable];
-
-  if (report.silentEcologicalStressDetected) {
-    return (
-      `Even though monthly rain charts in ${report.regionA.name} still swing up and down like normal seasons ` +
-      `(rainfall change is not statistically clear yet, p = ${precA.pValue.toFixed(2)}), satellite root-zone sensors show ` +
-      `soil water 1 meter underground has already been drying significantly since ${gwetA.changePointDate}. ` +
-      `Farmers and water managers cannot wait for an empty rain gauge before conserving soil moisture or rewetting peatlands.`
-    );
-  }
-
-  if (report.isOppositeDirection) {
-    return (
-      `While ${report.regionA.name} shifted toward hotter, drier conditions around ${primaryA.changePointDate} ` +
-      `(${NASA_VARIABLES[report.primaryVariable].shortLabel}), ${report.regionB.name} across the ocean moved in the opposite direction ` +
-      `(dipole correlation r = ${report.dipoleCorrelationR.toFixed(2)}). When Indian Ocean or Pacific climate swings intensify, ` +
-      `communities on the drying side should lock in reservoir storage early rather than relying on last year's planting calendar.`
-    );
-  }
-
+function SectionEyebrow({ sector, label }: { sector: string; label: string }) {
   return (
-    `Satellite records over ${report.startYear}–${report.endYear} show ${report.regionA.name} and ${report.regionB.name} ` +
-    `experiencing coupled water-energy stress centered around ${primaryA.changePointDate}. Tracking root-zone moisture alongside ` +
-    `surface skin heat gives local watersheds an earlier seasonal warning than rainfall totals alone.`
+    <div className="flex items-center gap-3">
+      <span className="h-px w-6 bg-drought-orange/75 shrink-0" aria-hidden="true" />
+      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        Sector {sector} · {label}
+      </span>
+    </div>
   );
+}
+
+const TOOLS_STORAGE_KEY = "nusashift-tools-open";
+const TOOLS_EVENT = "nusashift-tools-pref";
+
+function subscribeToolsPreference(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(TOOLS_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(TOOLS_EVENT, cb);
+  };
+}
+
+function readDesktopToolsSnapshot(): boolean {
+  try {
+    return window.localStorage.getItem(TOOLS_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeDesktopToolsPreference(open: boolean) {
+  try {
+    window.localStorage.setItem(TOOLS_STORAGE_KEY, String(open));
+    window.dispatchEvent(new Event(TOOLS_EVENT));
+  } catch {
+    // Ignore storage access errors
+  }
 }
 
 export default function NusaShiftDashboardPage() {
@@ -230,17 +244,85 @@ export default function NusaShiftDashboardPage() {
   const [activeVariable, setActiveVariable] = useState<NasaVariableCode>(
     () => SYMPTOM_PRESETS[CURATED_CASES[0].defaultSymptom].primaryVariable
   );
-  const [viewMode, setViewMode] = useState<ViewLayerMode>("overview");
   const [activePinMode, setActivePinMode] = useState<"A" | "B">("A");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isProofOpen, setIsProofOpen] = useState(false);
-  const [activeBrief, setActiveBrief] = useState<CausalExplanationResponse | null>(
-    null
-  );
+  const [isProofHighlighted, setIsProofHighlighted] = useState(false);
+  const [activeBrief, setActiveBrief] =
+    useState<CausalExplanationResponse | null>(null);
   const [mapMode, setMapMode] = useState<MapRenderMode>("3d");
   const [is3dAvailable, setIs3dAvailable] = useState(true);
-  const isOverlayLayout = useIsOverlayLayout();
+  const desktopToolsOpen = useSyncExternalStore(
+    subscribeToolsPreference,
+    readDesktopToolsSnapshot,
+    () => true
+  );
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+
   const hydratedRef = useRef(false);
+  const isDesktopHero = useIsDesktopHero();
+  const lenis = useLenis();
+  const reducedMotion = usePrefersReducedMotion();
+
+  const handleToggleTools = useCallback(() => {
+    if (isDesktopHero) {
+      writeDesktopToolsPreference(!desktopToolsOpen);
+      return;
+    }
+    setMobileToolsOpen((prev) => !prev);
+  }, [desktopToolsOpen, isDesktopHero]);
+
+  const handleCloseTools = useCallback(() => {
+    if (isDesktopHero) {
+      writeDesktopToolsPreference(false);
+      return;
+    }
+    setMobileToolsOpen(false);
+  }, [isDesktopHero]);
+
+  // Global keyboard shortcuts: `T` toggles floating tools, `Escape` closes mobile sheet.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        handleToggleTools();
+      } else if (e.key === "Escape" && !isDesktopHero && mobileToolsOpen) {
+        setMobileToolsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleToggleTools, isDesktopHero, mobileToolsOpen]);
+
+  const scrollToSection = useCallback(
+    (targetId: string, focusHeading = false) => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      if (lenis && !reducedMotion) {
+        lenis.scrollTo(target, { offset: 0 });
+      } else {
+        target.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      }
+      if (focusHeading && targetId === "verdict") {
+        document.getElementById("verdict-heading")?.focus({ preventScroll: true });
+      }
+    },
+    [lenis, reducedMotion]
+  );
 
   const handle3dUnsupported = useCallback(() => {
     setIs3dAvailable(false);
@@ -248,9 +330,9 @@ export default function NusaShiftDashboardPage() {
   }, []);
 
   const syncUrl = useCallback(
-    (nextReport: DualRegionAnalysisReport, nextView: ViewLayerMode) => {
+    (nextReport: DualRegionAnalysisReport, scientificOpen = false) => {
       if (typeof window === "undefined") return;
-      const query = buildQueryParams(nextReport, nextView);
+      const query = buildQueryParams(nextReport, scientificOpen);
       window.history.replaceState(null, "", `${window.location.pathname}${query}`);
     },
     []
@@ -265,7 +347,7 @@ export default function NusaShiftDashboardPage() {
       ecosystem: EcosystemType;
       regionA?: { name: string; country: string; lat: number; lon: number };
       regionB?: { name: string; country: string; lat: number; lon: number };
-    }, targetView?: ViewLayerMode) => {
+    }) => {
       setIsAnalyzing(true);
       try {
         const res = await fetch("/api/analyze", {
@@ -277,17 +359,17 @@ export default function NusaShiftDashboardPage() {
         const nextReport = (await res.json()) as DualRegionAnalysisReport;
         setReport(nextReport);
         setActiveVariable(nextReport.primaryVariable);
-        syncUrl(nextReport, targetView ?? viewMode);
+        syncUrl(nextReport, isProofOpen);
       } catch {
         // Resilient fallback if client request fails
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [syncUrl, viewMode]
+    [isProofOpen, syncUrl]
   );
 
-  // Hydrate shared investigations from URL query parameters on mount
+  // Hydrate shared investigations & legacy ?view= deep links cleanly
   useEffect(() => {
     if (hydratedRef.current || typeof window === "undefined") return;
     hydratedRef.current = true;
@@ -295,10 +377,7 @@ export default function NusaShiftDashboardPage() {
     const sp = new URLSearchParams(window.location.search);
     if (sp.toString().length === 0) return;
 
-    const rawView = sp.get("view") as ViewLayerMode | null;
-    const restoredView: ViewLayerMode =
-      rawView && VALID_VIEWS.has(rawView) ? rawView : "overview";
-
+    const rawView = sp.get("view");
     const rawSymptom = sp.get("symptom") as SymptomId | null;
     const symptom: SymptomId | undefined =
       rawSymptom && VALID_SYMPTOMS.has(rawSymptom) ? rawSymptom : undefined;
@@ -311,7 +390,8 @@ export default function NusaShiftDashboardPage() {
 
     const winParam = sp.get("window");
     const matchedWin = WINDOW_OPTIONS.find((w) => w.id === winParam);
-    const startYear = matchedWin?.startYear ?? Number(sp.get("startYear") || 1985);
+    const startYear =
+      matchedWin?.startYear ?? Number(sp.get("startYear") || 1985);
     const endYear = matchedWin?.endYear ?? Number(sp.get("endYear") || 2025);
 
     const latA = Number(sp.get("latA"));
@@ -331,81 +411,61 @@ export default function NusaShiftDashboardPage() {
     const caseParam = sp.get("case") ?? CURATED_CASES[0].caseId;
 
     void Promise.resolve().then(async () => {
-      if (restoredView !== "overview") {
-        setViewMode(restoredView);
-        if (restoredView === "scientific") setIsProofOpen(true);
+      if (rawView === "scientific") {
+        setIsProofOpen(true);
+        setIsProofHighlighted(true);
       }
 
       if (hasCoords) {
         const resolvedSymptom = symptom ?? "custom_exploration";
         const resolvedEco =
           ecosystem ?? SYMPTOM_PRESETS[resolvedSymptom].defaultEcosystem;
-        await runLiveAnalyze(
-          {
-            caseId: "live-custom-pair",
-            startYear,
-            endYear,
-            symptom: resolvedSymptom,
-            ecosystem: resolvedEco,
-            regionA: {
-              name: `Target A (${latA.toFixed(2)}°, ${lonA.toFixed(2)}°)`,
-              country: "Shared Coordinate",
-              lat: latA,
-              lon: lonA,
-            },
-            regionB: {
-              name: `Target B (${latB.toFixed(2)}°, ${lonB.toFixed(2)}°)`,
-              country: "Shared Coordinate",
-              lat: latB,
-              lon: lonB,
-            },
+        await runLiveAnalyze({
+          caseId: "live-custom-pair",
+          startYear,
+          endYear,
+          symptom: resolvedSymptom,
+          ecosystem: resolvedEco,
+          regionA: {
+            name: `Target A (${latA.toFixed(2)}°, ${lonA.toFixed(2)}°)`,
+            country: "Shared Coordinate",
+            lat: latA,
+            lon: lonA,
           },
-          restoredView
+          regionB: {
+            name: `Target B (${latB.toFixed(2)}°, ${lonB.toFixed(2)}°)`,
+            country: "Shared Coordinate",
+            lat: latB,
+            lon: lonB,
+          },
+        });
+      } else {
+        const restored = getPrecomputedCaseReport(
+          caseParam,
+          Number.isFinite(startYear) ? startYear : 1985,
+          Number.isFinite(endYear) ? endYear : 2025,
+          symptom,
+          ecosystem
         );
-        return;
+        setReport(restored);
+        setActiveVariable(restored.primaryVariable);
       }
 
-      const restored = getPrecomputedCaseReport(
-        caseParam,
-        Number.isFinite(startYear) ? startYear : 1985,
-        Number.isFinite(endYear) ? endYear : 2025,
-        symptom,
-        ecosystem
-      );
-      setReport(restored);
-      setActiveVariable(restored.primaryVariable);
+      if (rawView === "scientific") {
+        setTimeout(() => {
+          document
+            .getElementById("proof")
+            ?.scrollIntoView({ behavior: "auto", block: "start" });
+        }, 80);
+      } else if (rawView === "lag_cascade") {
+        setTimeout(() => {
+          document
+            .getElementById("mechanism")
+            ?.scrollIntoView({ behavior: "auto", block: "start" });
+        }, 80);
+      }
     });
   }, [runLiveAnalyze]);
-
-  const handleViewModeChange = useCallback(
-    (mode: ViewLayerMode) => {
-      setViewMode(mode);
-      syncUrl(report, mode);
-      if (mode === "scientific") {
-        setIsProofOpen(true);
-      }
-
-      if (typeof window !== "undefined") {
-        const reduced = window.matchMedia(
-          "(prefers-reduced-motion: reduce)"
-        ).matches;
-        const behavior: ScrollBehavior = reduced ? "auto" : "smooth";
-
-        if (mode === "scientific") {
-          setTimeout(() => {
-            document
-              .getElementById("scientific-proof-section")
-              ?.scrollIntoView({ behavior, block: "nearest" });
-          }, 40);
-        } else if (mode === "lag_cascade") {
-          document
-            .getElementById("lag-cascade-section")
-            ?.scrollIntoView({ behavior, block: "nearest" });
-        }
-      }
-    },
-    [report, syncUrl]
-  );
 
   const handleSelectCase = useCallback(
     (caseId: string) => {
@@ -416,9 +476,9 @@ export default function NusaShiftDashboardPage() {
       );
       setReport(nextReport);
       setActiveVariable(nextReport.primaryVariable);
-      syncUrl(nextReport, viewMode);
+      syncUrl(nextReport, isProofOpen);
     },
-    [report.endYear, report.startYear, syncUrl, viewMode]
+    [isProofOpen, report.endYear, report.startYear, syncUrl]
   );
 
   const handleUpdateParameters = useCallback(
@@ -450,7 +510,7 @@ export default function NusaShiftDashboardPage() {
         if (updates.symptom) {
           setActiveVariable(nextReport.primaryVariable);
         }
-        syncUrl(nextReport, viewMode);
+        syncUrl(nextReport, isProofOpen);
         return;
       }
 
@@ -464,7 +524,7 @@ export default function NusaShiftDashboardPage() {
         regionB: report.regionB,
       });
     },
-    [report, runLiveAnalyze, syncUrl, viewMode]
+    [isProofOpen, report, runLiveAnalyze, syncUrl]
   );
 
   const handleMapClickCoordinate = useCallback(
@@ -491,9 +551,18 @@ export default function NusaShiftDashboardPage() {
     [activePinMode, report, runLiveAnalyze]
   );
 
+  const handleToggleProof = useCallback(() => {
+    setIsProofOpen((prev) => {
+      const next = !prev;
+      setIsProofHighlighted(false);
+      syncUrl(report, next);
+      return next;
+    });
+  }, [report, syncUrl]);
+
   const handleShareUrl = useCallback(async (): Promise<boolean> => {
     if (typeof window === "undefined") return false;
-    const query = buildQueryParams(report, viewMode);
+    const query = buildQueryParams(report, isProofOpen);
     const fullUrl = `${window.location.origin}${window.location.pathname}${query}`;
     window.history.replaceState(null, "", `${window.location.pathname}${query}`);
 
@@ -503,7 +572,7 @@ export default function NusaShiftDashboardPage() {
     } catch {
       return legacyExecCopy(fullUrl);
     }
-  }, [report, viewMode]);
+  }, [isProofOpen, report]);
 
   const effectiveBrief = useMemo(
     () => activeBrief ?? generateDeterministicCausalBrief(report),
@@ -523,97 +592,353 @@ export default function NusaShiftDashboardPage() {
     URL.revokeObjectURL(url);
   }, [effectiveBrief, report]);
 
+  const heroSubtitle = useMemo(() => {
+    const pair = `${report.regionA.name} ↔ ${report.regionB.name}`;
+    if (report.silentEcologicalStressDetected) {
+      return `${pair} · Silent Root-Zone Drying`;
+    }
+    if (report.isOppositeDirection) {
+      return `${pair} · Opposite-Sign Dipole`;
+    }
+    return `${pair} · Coupled Teleconnection`;
+  }, [
+    report.isOppositeDirection,
+    report.regionA.name,
+    report.regionB.name,
+    report.silentEcologicalStressDetected,
+  ]);
+
+  const yearSpan = Math.max(1, report.endYear - report.startYear);
+
+  const heroSummary = useMemo(() => {
+    if (report.silentEcologicalStressDetected) {
+      return "Monthly rainfall appears statistically flat while satellite sensors reveal sustained root-zone moisture depletion underneath.";
+    }
+    if (report.isOppositeDirection) {
+      return `Cross-oceanic moisture and surface skin heat swing in opposite directions across ${yearSpan} years of NASA satellite telemetry.`;
+    }
+    return "Decadal satellite anomalies tracking solar radiation, root-zone water, skin temperature, and rainfall across paired ecosystems.";
+  }, [report.isOppositeDirection, report.silentEcologicalStressDetected, yearSpan]);
+
+  const primaryTrendA = report.trendsA[report.primaryVariable];
+  const shiftOnset = primaryTrendA?.isAvailable
+    ? primaryTrendA.changePointDate
+    : "N/A";
+  const gistempAlignmentPct = Math.max(
+    0,
+    100 - report.gistempValidation.deviationPct
+  );
+  const isLive = report.dataSourceTag === "LIVE_NASA_POWER_V2";
+
+  const verdictBadge = useMemo(() => getVerdictBadge(report), [report]);
+  const verdictSentence = useMemo(() => buildVerdictSentence(report), [report]);
+  const verdictPlainSummary = useMemo(
+    () => buildVerdictPlainSummary(report),
+    [report]
+  );
+  const verdictMetrics = useMemo(() => buildVerdictMetrics(report), [report]);
+
+  const verdictBadgeClasses =
+    verdictBadge.variant === "alert"
+      ? "bg-drought-coral/15 text-[#F87171] border-drought-coral/50"
+      : verdictBadge.variant === "opposite"
+      ? "bg-drought-orange/15 text-drought-orange border-drought-orange/45"
+      : "bg-dipole-cyan/15 text-dipole-cyan border-dipole-cyan/45";
+
+  const toolsVisible = isDesktopHero ? desktopToolsOpen : mobileToolsOpen;
+
   return (
-    <div className="min-h-screen tactical-grid-bg bg-canvas-900 text-ink-primary">
-      <main className="max-w-[1920px] mx-auto px-3 sm:px-4 py-3.5 space-y-3.5">
-        {/* Top Command Header */}
+    <div className="min-h-screen bg-canvas-950 text-ink-primary">
+      <a
+        href="#verdict"
+        onClick={(e) => {
+          e.preventDefault();
+          scrollToSection("verdict", true);
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-4 focus:z-50 glass-panel rounded-full px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] text-ink-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange"
+      >
+        Skip to verdict
+      </a>
+      {/* Centered Space Globe Hero + Toggleable Glass Overlays */}
+      <section
+        id="hero"
+        aria-label="Global teleconnection explorer hero"
+        className="relative w-full bg-canvas-950 flex flex-col lg:h-dvh lg:min-h-[680px] lg:overflow-hidden"
+      >
         <NavbarHeader
           report={report}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onShareUrl={handleShareUrl}
           onExportBrief={handleExportBrief}
         />
 
-        {/*
-          Hero workspace. On xl+ the globe is full-bleed and the HUD panels float
-          over it (overlay uses pointer-events-none so the globe stays draggable
-          between panels). Below xl the overlay wrapper is display:contents and
-          everything stacks: Triage -> Controls -> Globe -> Lag-Cascade -> Brief.
-        */}
-        <section
-          aria-label="3D teleconnection globe workspace"
-          className="relative flex flex-col gap-3.5 xl:block xl:h-[calc(100dvh-9.25rem)] xl:min-h-[700px] xl:rounded-xl xl:overflow-hidden xl:border xl:border-white/10 xl:bg-canvas-950/40"
-        >
-          {/* Layer 0: Map viewport */}
-          <div className="order-2 relative h-[62vh] min-h-[380px] max-h-[620px] rounded-xl overflow-hidden border border-white/10 bg-canvas-950 xl:absolute xl:inset-0 xl:h-auto xl:min-h-0 xl:max-h-none xl:rounded-none xl:border-0 xl:bg-transparent">
-            <InteractiveWorldMap
+        {/* Centered 3D Globe / 2D Map Stage */}
+        <div className="relative h-[46vh] min-h-[296px] max-h-[410px] w-full shrink-0 overflow-hidden lg:absolute lg:inset-0 lg:z-0 lg:h-auto lg:min-h-0 lg:max-h-none">
+          <InteractiveWorldMap
+            report={report}
+            mapMode={mapMode}
+            globeFocus="pair"
+            globeHorizontalOffset={0}
+            globeVerticalOffset={0}
+            onMapClickCoordinate={handleMapClickCoordinate}
+            on3dUnsupported={handle3dUnsupported}
+          />
+
+          <div className="lg:hidden absolute top-3 right-3 z-20">
+            <MapControlsBar
               report={report}
+              activePinMode={activePinMode}
+              isAnalyzing={isAnalyzing}
               mapMode={mapMode}
-              globeFocus={viewMode === "lag_cascade" ? "regionA" : "pair"}
-              globeVerticalOffset={isOverlayLayout ? -60 : 0}
-              onMapClickCoordinate={handleMapClickCoordinate}
-              on3dUnsupported={handle3dUnsupported}
+              is3dAvailable={is3dAvailable}
+              onPinModeChange={setActivePinMode}
+              onSelectCase={handleSelectCase}
+              onMapModeChange={setMapMode}
             />
           </div>
+        </div>
 
-          {/* Layer 1: Floating HUD overlay */}
-          <div className="contents xl:pointer-events-none xl:absolute xl:inset-0 xl:z-10 xl:grid xl:grid-cols-[minmax(0,var(--hud-side-l))_minmax(0,1fr)_minmax(0,var(--hud-side-r))] xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:gap-3 xl:p-3">
-            {/* Top-center: map controls, live status, citizen translation */}
-            <div className="order-1 min-w-0 flex flex-col gap-2 xl:col-start-2 xl:row-start-1 xl:w-full xl:max-w-[780px] xl:justify-self-center xl:pointer-events-auto">
-              <MapControlsBar
-                report={report}
-                activePinMode={activePinMode}
-                isAnalyzing={isAnalyzing}
-                mapMode={mapMode}
-                is3dAvailable={is3dAvailable}
-                onPinModeChange={setActivePinMode}
-                onSelectCase={handleSelectCase}
-                onMapModeChange={setMapMode}
+        {/* Bottom-only subtle readability scrim on desktop */}
+        <div
+          aria-hidden="true"
+          className="hidden lg:block pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-24 bg-gradient-to-t from-canvas-950/92 via-canvas-950/50 to-transparent"
+        />
+
+        {/* Editorial Identity Card: flows below globe on mobile; floats top-left glass card on desktop */}
+        <div
+          id="hero-brief-panel"
+          aria-hidden={isDesktopHero && !desktopToolsOpen ? true : undefined}
+          inert={isDesktopHero && !desktopToolsOpen ? true : undefined}
+          className={`relative z-10 px-5 pt-4 pb-3 space-y-3.5 lg:absolute lg:top-[4.25rem] lg:left-6 xl:left-8 lg:z-20 lg:w-[272px] xl:w-[344px] lg:glass-panel lg:rounded-xl lg:p-4 xl:p-5 lg:space-y-3 lg:transition-all lg:duration-300 motion-reduce:transition-none motion-reduce:translate-x-0 ${
+            desktopToolsOpen
+              ? "lg:opacity-100 lg:translate-x-0 lg:pointer-events-auto"
+              : "lg:opacity-0 lg:-translate-x-6 lg:pointer-events-none"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="h-px w-5 bg-drought-orange/80 shrink-0" aria-hidden="true" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-secondary">
+              NASA Space Apps 2026 · Trend Detective
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="font-display text-4xl lg:text-[1.95rem] xl:text-[2.55rem] leading-[0.95] tracking-[-0.02em] text-ink-primary">
+              Two regions.
+              <br />
+              One climate signal.
+            </h1>
+            <p className="font-display italic text-base lg:text-[15px] xl:text-lg text-drought-orange/95 leading-snug">
+              {heroSubtitle}
+            </p>
+          </div>
+
+          <p className="text-xs sm:text-[13px] leading-relaxed text-ink-secondary">
+            {heroSummary}
+          </p>
+
+          <ul className="grid grid-cols-3 gap-3 pt-2.5 border-t border-white/10">
+            <li>
+              <p className="font-mono text-lg sm:text-xl font-medium tabular-nums tracking-tight text-ink-primary">
+                {report.dipoleCorrelationR.toFixed(2)}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    report.isOppositeDirection ? "bg-drought-orange" : "bg-dipole-cyan"
+                  }`}
+                />
+                <span>Dipole (r)</span>
+              </p>
+            </li>
+            <li>
+              <p className="font-mono text-lg sm:text-xl font-medium tabular-nums tracking-tight text-ink-primary">
+                {shiftOnset}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                Shift Onset
+              </p>
+            </li>
+            <li>
+              <p className="font-mono text-lg sm:text-xl font-medium tabular-nums tracking-tight text-nominal-green">
+                {gistempAlignmentPct.toFixed(1)}%
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                GISTEMP
+              </p>
+            </li>
+          </ul>
+        </div>
+
+        {/* Floating Analysis Tools Panel (right glass panel on desktop, drawer sheet on mobile) */}
+        <FloatingToolsPanel
+          id="hero-tools-panel"
+          isDesktop={isDesktopHero}
+          desktopOpen={desktopToolsOpen}
+          mobileOpen={mobileToolsOpen}
+          onClose={handleCloseTools}
+          report={report}
+          activePinMode={activePinMode}
+          isAnalyzing={isAnalyzing}
+          mapMode={mapMode}
+          is3dAvailable={is3dAvailable}
+          onPinModeChange={setActivePinMode}
+          onSelectCase={handleSelectCase}
+          onMapModeChange={setMapMode}
+          onUpdateParameters={handleUpdateParameters}
+        />
+
+        {/* Hero Bottom Dock: Scroll Cue, CTA, Toggle Bar & Status */}
+        <div className="relative z-20 px-5 sm:px-8 lg:px-8 pb-4 pt-3 lg:mt-auto flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <ScrollCue targetId="verdict" />
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("verdict", true)}
+              className="glass-panel min-h-[34px] inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.13em] text-ink-primary hover:border-white/30 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange"
+            >
+              <span>Explore evidence</span>
+              <ArrowDown className="w-3.5 h-3.5 text-drought-orange" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={toolsVisible}
+              aria-controls="hero-tools-panel"
+              onClick={handleToggleTools}
+              title={
+                toolsVisible
+                  ? "Hide floating panels (T)"
+                  : "Show floating panels (T)"
+              }
+              className={`min-h-[34px] rounded-full px-3.5 py-1.5 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange ${
+                toolsVisible
+                  ? "glass-panel text-ink-primary border-drought-orange/45 hover:border-drought-orange/70"
+                  : "glass-panel text-ink-secondary hover:text-ink-primary hover:border-white/30"
+              }`}
+            >
+              <SlidersHorizontal
+                className="w-3.5 h-3.5 text-drought-orange"
+                aria-hidden="true"
               />
+              <span>{toolsVisible ? "Hide Tools" : "Show Tools"}</span>
+              <kbd className="hidden lg:inline-block rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[10px] leading-none text-ink-secondary">
+                T
+              </kbd>
+            </button>
+          </div>
 
-              {isAnalyzing ? (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="hud-panel-float rounded-lg px-3.5 py-2 border border-dipole-cyan/40 text-xs font-mono text-dipole-cyan flex items-center gap-2"
-                >
-                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
-                  <span>
-                    Querying NASA POWER API v2 ({report.startYear}–{report.endYear}) for
-                    dual-region monthly Earth-system telemetry...
-                  </span>
-                </div>
-              ) : null}
+          <div className="pointer-events-auto flex items-center gap-3">
+            <span className="hidden xl:inline font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+              {mapMode === "3d"
+                ? `Hover borders · Click globe to probe ${activePinMode}`
+                : `Click map to probe ${activePinMode}`}
+            </span>
 
-              {viewMode === "citizen" ? (
-                <section
-                  aria-label="Citizen and community climate translation"
-                  className="hud-panel-float rounded-xl px-4 py-3 border border-dipole-cyan/40 flex items-start gap-3"
-                >
-                  <Sprout
-                    className="w-5 h-5 text-dipole-cyan shrink-0 mt-0.5"
-                    aria-hidden="true"
-                  />
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
-                        What This Means for Local Communities &amp; Farmers
-                      </h2>
-                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-950 border border-white/10 text-ink-secondary">
-                        CITIZEN VIEW · PLAIN-ENGLISH TRANSLATION
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-ink-primary leading-relaxed">
-                      <MathText text={buildCitizenTakeaway(report)} />
-                    </p>
-                  </div>
-                </section>
-              ) : null}
+            <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-secondary">
+              <span
+                aria-hidden="true"
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isLive
+                    ? "bg-nominal-green shadow-[0_0_8px_#22C55E] animate-pulse"
+                    : "bg-dipole-cyan"
+                }`}
+              />
+              <span>{isLive ? "LIVE NASA POWER V2" : "CACHED NASA POWER V2"}</span>
+              <span className="text-ink-muted" aria-hidden="true">
+                ·
+              </span>
+              <span
+                className={
+                  verdictBadge.variant === "alert"
+                    ? "text-[#F87171]"
+                    : verdictBadge.variant === "opposite"
+                    ? "text-drought-orange"
+                    : "text-dipole-cyan"
+                }
+              >
+                {verdictBadge.label}
+              </span>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Left: Hypothesis Triage & NASA Sensors */}
-            <div className="order-0 min-w-0 hud-scroll xl:col-start-1 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
+      {/* Sticky Section Mini-Nav (appears after hero exits viewport) */}
+      <StickySectionNav />
+
+      {/* Below-Hero Narrative Flow: Verdict -> Evidence -> Mechanism -> Proof */}
+      <main className="relative z-10 bg-canvas-900">
+        {/* SECTION 1: VERDICT */}
+        <section
+          id="verdict"
+          aria-labelledby="verdict-heading"
+          className="py-20 lg:py-28 border-t border-white/[0.08]"
+        >
+          <div className="max-w-[1200px] mx-auto px-5 sm:px-8 lg:px-10 space-y-10">
+            <Reveal className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <SectionEyebrow sector="01" label="Verdict" />
+                <span
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-[11px] font-semibold uppercase tracking-[0.12em] ${verdictBadgeClasses}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="w-1.5 h-1.5 rounded-full bg-current"
+                  />
+                  <span>{verdictBadge.label}</span>
+                </span>
+              </div>
+
+              <h2
+                id="verdict-heading"
+                tabIndex={-1}
+                className="font-display text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.12] tracking-[-0.015em] text-ink-primary max-w-[30ch] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-drought-orange rounded-sm"
+              >
+                {verdictSentence}
+              </h2>
+
+              <p className="text-sm sm:text-base leading-[1.6] text-ink-secondary max-w-[68ch]">
+                <MathText text={verdictPlainSummary} />
+              </p>
+            </Reveal>
+
+            {/* 3 Plain-Language Key Figures */}
+            <Reveal delayMs={70}>
+              <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {verdictMetrics.map((item) => (
+                  <li
+                    key={item.id}
+                    className="glass-panel rounded-xl p-5 sm:p-6 flex flex-col justify-between gap-3"
+                  >
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium text-ink-secondary">
+                        {item.label}
+                      </h3>
+                      <p className="font-mono text-2xl sm:text-[28px] font-medium tabular-nums tracking-tight text-ink-primary">
+                        {item.value}
+                      </p>
+                      <p className="text-sm leading-relaxed text-ink-secondary">
+                        {item.meaning}
+                      </p>
+                    </div>
+                    <div className="pt-3 border-t border-white/[0.08] font-mono text-xs text-ink-muted">
+                      {item.captionTex ? (
+                        <Tex math={item.captionTex} />
+                      ) : (
+                        item.captionText
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+
+            {/* Compact Question & Friendly Indicator Controls */}
+            <Reveal delayMs={140}>
               <HypothesisTriage
                 report={report}
                 activeVariable={activeVariable}
@@ -626,60 +951,132 @@ export default function NusaShiftDashboardPage() {
                   handleUpdateParameters({ startYear, endYear })
                 }
               />
-            </div>
+            </Reveal>
+          </div>
+        </section>
 
-            {/* Bottom-center: 4-node Lag-Cascade waypoint stepper */}
-            <div
-              id="lag-cascade-section"
-              className={`order-3 min-w-0 rounded-xl transition xl:col-start-2 xl:row-start-3 xl:w-full xl:max-w-[860px] xl:justify-self-center xl:pointer-events-auto ${
-                viewMode === "lag_cascade" ? "ring-1 ring-radar-gold/60" : ""
-              }`}
-            >
-              <LagCascadePanel
+        {/* SECTION 2: EVIDENCE */}
+        <section
+          id="evidence"
+          aria-labelledby="evidence-heading"
+          className="py-20 lg:py-28 border-t border-white/[0.06]"
+        >
+          <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-10 space-y-8">
+            <Reveal className="space-y-3">
+              <SectionEyebrow sector="02" label="Visual Evidence" />
+              <div className="space-y-2">
+                <h2
+                  id="evidence-heading"
+                  className="font-display text-[clamp(1.75rem,3vw,2.75rem)] leading-[1.12] tracking-[-0.015em] text-ink-primary"
+                >
+                  Forty years side by side
+                </h2>
+                <p className="text-sm sm:text-base leading-[1.6] text-ink-secondary max-w-[65ch]">
+                  One satellite indicator at a time across both locations, with seasonal monsoon swings removed so long-term shifts stand out clearly.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal delayMs={80}>
+              <DualRegionCharts
                 report={report}
                 activeVariable={activeVariable}
+                isLoading={isAnalyzing}
                 onSelectVariable={setActiveVariable}
               />
-            </div>
+            </Reveal>
+          </div>
+        </section>
 
-            {/* Right: Dipole Coupling Ring + Bounded AI Brief */}
-            <div className="order-4 min-w-0 hud-scroll xl:col-start-3 xl:row-start-1 xl:row-span-3 xl:self-start xl:max-h-full xl:overflow-y-auto xl:pointer-events-auto">
-              <BoundedAiBrief report={report} onBriefChange={setActiveBrief} />
+        {/* SECTION 3: MECHANISM */}
+        <section
+          id="mechanism"
+          aria-labelledby="mechanism-heading"
+          className="py-20 lg:py-28 border-t border-white/[0.06]"
+        >
+          <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-10 space-y-8">
+            <Reveal className="space-y-3">
+              <SectionEyebrow sector="03" label="Physical Mechanism" />
+              <div className="space-y-2">
+                <h2
+                  id="mechanism-heading"
+                  className="font-display text-[clamp(1.75rem,3vw,2.75rem)] leading-[1.12] tracking-[-0.015em] text-ink-primary"
+                >
+                  Why underground moisture shifts first
+                </h2>
+                <p className="text-sm sm:text-base leading-[1.6] text-ink-secondary max-w-[65ch]">
+                  Follow how extra sunlight travels down into soil wetness, land surface heat, and rainfall over subsequent months.
+                </p>
+              </div>
+            </Reveal>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+              <Reveal delayMs={60} className="xl:col-span-8 flex">
+                <LagCascadePanel
+                  report={report}
+                  activeVariable={activeVariable}
+                  onSelectVariable={setActiveVariable}
+                />
+              </Reveal>
+
+              <Reveal delayMs={140} className="xl:col-span-4 flex">
+                <BoundedAiBrief report={report} onBriefChange={setActiveBrief} />
+              </Reveal>
             </div>
           </div>
         </section>
 
-        {/* Bottom 12 Cols: Synchronized Dual-Region Recharts + Scientific Proof Drawer */}
-        <div className="space-y-3.5">
-          <DualRegionCharts
-            report={report}
-            activeVariable={activeVariable}
-            isLoading={isAnalyzing}
-            onSelectVariable={setActiveVariable}
-          />
+        {/* SECTION 4: PROOF */}
+        <section
+          id="proof"
+          aria-labelledby="proof-heading"
+          className="pt-20 lg:pt-28 pb-16 border-t border-white/[0.06]"
+        >
+          <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-10 space-y-8">
+            <Reveal className="space-y-3">
+              <SectionEyebrow sector="04" label="Scientific Proof" />
+              <div className="space-y-2">
+                <h2
+                  id="proof-heading"
+                  className="font-display text-[clamp(1.75rem,3vw,2.75rem)] leading-[1.12] tracking-[-0.015em] text-ink-primary"
+                >
+                  Formal statistics &amp; benchmark check
+                </h2>
+                <p className="text-sm sm:text-base leading-[1.6] text-ink-secondary max-w-[65ch]">
+                  Open the full non-parametric test matrix, confidence intervals, NASA GISTEMP v4 validation, and exact underlying formulas.
+                </p>
+              </div>
+            </Reveal>
 
-          <ScientificProofDrawer
-            report={report}
-            viewMode={viewMode}
-            isOpen={isProofOpen}
-            onToggleOpen={() => setIsProofOpen((prev) => !prev)}
-          />
-        </div>
+            <Reveal delayMs={60}>
+              <ScientificProofDrawer
+                report={report}
+                isOpen={isProofOpen}
+                isHighlighted={isProofHighlighted}
+                onToggleOpen={handleToggleProof}
+              />
+            </Reveal>
 
-        {/* Footer Attribution */}
-        <footer className="pt-1 pb-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
-          <div className="flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5 text-drought-orange" aria-hidden="true" />
-            <span>
-              NusaShift · NASA International Space Apps Challenge 2026 (Be An
-              Earth System Trend Detective)
-            </span>
+            {/* Footer Attribution */}
+            <footer className="pt-8 border-t border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-ink-muted">
+              <div className="flex items-center gap-2">
+                <Compass
+                  className="w-4 h-4 text-drought-orange shrink-0"
+                  aria-hidden="true"
+                />
+                <span>
+                  NusaShift · NASA International Space Apps Challenge 2026 (Be An
+                  Earth System Trend Detective)
+                </span>
+              </div>
+              <span className="sm:text-right">
+                NASA POWER v2 (MERRA-2 · CERES · GPM IMERG) · NASA GISTEMP v4 ·
+                Earth textures: NASA Blue Marble NG, SRTM Elevation &amp; Natural
+                Earth 110m · Place geocoding: BigDataCloud
+              </span>
+            </footer>
           </div>
-          <span>
-            NASA POWER API v2 (MERRA-2 · CERES · GPM IMERG) · NASA GISTEMP v4
-            Calibrated
-          </span>
-        </footer>
+        </section>
       </main>
     </div>
   );

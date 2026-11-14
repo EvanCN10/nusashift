@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Cpu, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
 import MathText from "@/components/math/MathText";
-import Tex from "@/components/math/Tex";
-import { texP } from "@/components/math/texFormat";
 import { serializeSummaryForAi } from "@/data/cachedCases";
 import { generateDeterministicCausalBrief } from "@/lib/causalFallback";
-import { formatDMS } from "@/lib/nasaPowerClient";
 import type {
   CausalExplanationResponse,
   DualRegionAnalysisReport,
@@ -33,11 +30,11 @@ function buildReportSignature(report: DualRegionAnalysisReport): string {
   ].join(":");
 }
 
+/** Mechanism sidebar: bounded causal brief (max 3 bullets), actions, and real provenance. */
 export default function BoundedAiBrief({
   report,
   onBriefChange,
 }: BoundedAiBriefProps) {
-  const gradientId = useId();
   const signature = buildReportSignature(report);
 
   const deterministicBrief = useMemo(
@@ -81,171 +78,53 @@ export default function BoundedAiBrief({
   const isLoading = resolved?.signature !== signature;
   const activeBrief =
     resolved?.signature === signature ? resolved.brief : deterministicBrief;
-
-  const couplingPct = Math.min(
-    100,
-    Math.max(0, Math.round(Math.abs(report.dipoleCorrelationR) * 100))
-  );
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - couplingPct / 100);
-  const primaryTrend = report.trendsA[report.primaryVariable];
+  const isAiSource = activeBrief.source !== "deterministic_fallback";
 
   return (
     <aside
-      aria-label="Dipole coupling gauge and bounded AI causal inspector"
-      className="hud-panel rounded-xl p-3.5 flex flex-col gap-3.5"
+      aria-label="Physical teleconnection explanation and local actions"
+      className="w-full glass-panel rounded-xl p-5 sm:p-6 flex flex-col justify-between gap-5"
     >
-      {/* Top Module: Dipole Coupling Circular Gauge + Telemetry Metadata */}
-      <div className="hud-well rounded-lg p-3 flex items-center gap-3.5">
-        <div className="relative w-[88px] h-[88px] shrink-0 flex items-center justify-center">
-          <svg
-            width="88"
-            height="88"
-            viewBox="0 0 88 88"
-            aria-hidden="true"
-            className="block"
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#F97316" />
-                <stop offset="100%" stopColor="#06B6D4" />
-              </linearGradient>
-            </defs>
-            <circle
-              cx="44"
-              cy="44"
-              r={radius}
-              fill="none"
-              stroke="rgba(255,255,255,0.08)"
-              strokeWidth="7"
-            />
-            <circle
-              cx="44"
-              cy="44"
-              r={radius}
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeWidth="7"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              transform="rotate(-90 44 44)"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="font-mono text-lg font-bold tabular-nums text-ink-primary leading-none">
-              {couplingPct}%
-            </span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-secondary mt-1">
-              COUPLING
-            </span>
-          </div>
-        </div>
-
-        <dl className="min-w-0 flex-1 space-y-1.5 text-[11px]">
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-ink-muted shrink-0">Driver:</dt>
-            <dd className="font-mono text-ink-primary truncate text-right">
-              {report.climateDriverTag}
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-ink-muted shrink-0">Regime Mode:</dt>
-            <dd
-              className={`font-mono font-semibold text-right ${
-                report.isOppositeDirection
-                  ? "text-drought-orange"
-                  : "text-dipole-cyan"
-              }`}
-            >
-              {report.isOppositeDirection
-                ? "OPPOSITE-SIGN SEESAW"
-                : "SYNCHRONOUS"}
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-ink-muted shrink-0">Dipole p-val:</dt>
-            <dd className="font-mono tabular-nums text-ink-primary text-right">
-              <Tex math={texP(report.dipolePValue)} />
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-ink-muted shrink-0">Data Feed:</dt>
-            <dd className="font-mono text-nominal-green truncate text-right">
-              {report.dataSourceTag}
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      {/* Bottom Module: IDENTIFIED REGIME RISKS & CAUSAL BRIEF */}
-      <div className="flex flex-col gap-3">
+      <div className="space-y-4">
+        {/* Eyebrow */}
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary flex items-center gap-1.5">
+          <div className="flex items-center gap-2 text-ink-secondary">
             {report.silentEcologicalStressDetected ? (
-              <ShieldAlert className="w-3.5 h-3.5 text-drought-coral" aria-hidden="true" />
+              <ShieldAlert
+                className="w-4 h-4 text-[#F87171] shrink-0"
+                aria-hidden="true"
+              />
             ) : (
-              <ShieldCheck className="w-3.5 h-3.5 text-dipole-cyan" aria-hidden="true" />
+              <ShieldCheck
+                className="w-4 h-4 text-dipole-cyan shrink-0"
+                aria-hidden="true"
+              />
             )}
-            <span>IDENTIFIED REGIME RISKS &amp; CAUSAL BRIEF</span>
-          </h2>
-        </div>
-
-        {/* DMS & Shift Metadata Block */}
-        <div className="hud-well rounded-lg p-2.5 space-y-1 font-mono text-[11px]">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-drought-orange shrink-0">Region A:</span>
-            <span className="text-ink-primary truncate text-right">
-              {report.regionA.name} · {formatDMS(report.regionA.lat, report.regionA.lon)}
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em]">
+              Bounded synthesis &amp; local actions
             </span>
           </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-dipole-cyan shrink-0">Region B:</span>
-            <span className="text-ink-primary truncate text-right">
-              {report.regionB.name} · {formatDMS(report.regionB.lat, report.regionB.lon)}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-drought-coral shrink-0">Primary Shift:</span>
-            <span className="text-ink-primary text-right">
-              {report.primaryVariable} · {primaryTrend.changePointDate} (
-              <Tex math={texP(primaryTrend.pValue)} />)
-            </span>
-          </div>
+          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
+            {report.climateDriverTag}
+          </span>
         </div>
 
-        {/* Headline + Optional Skeleton Pulse While AI Synthesizing */}
-        <div className="space-y-1.5">
-          {isLoading ? (
-            <div
-              role="status"
-              aria-label="Synthesizing bounded causal explanation"
-              className="space-y-1.5 pb-1"
-            >
-              <div className="h-2.5 w-2/3 rounded bg-panel-800 animate-pulse" />
-              <div className="text-[10px] font-mono text-dipole-cyan">
-                Refining synthesis via Gemini 3.8 Flash (showing deterministic baseline)...
-              </div>
-            </div>
-          ) : null}
+        {/* Headline */}
+        <h3 className="text-lg font-semibold leading-snug text-ink-primary">
+          <MathText text={activeBrief.headline} />
+        </h3>
 
-          <h3 className="text-sm font-semibold leading-snug text-ink-primary">
-            <MathText text={activeBrief.headline} />
-          </h3>
-        </div>
-
-        {/* Physical Teleconnection Mechanism */}
-        <div className="space-y-1.5">
-          <div className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-drought-orange">
-            PHYSICAL TELECONNECTION MECHANISM:
+        {/* Physical Mechanism (max 3 bullets) */}
+        <div className="space-y-2">
+          <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-drought-orange">
+            Why it happens
           </div>
-          <ul className="space-y-1.5 text-xs leading-relaxed text-ink-secondary">
+          <ul className="space-y-2.5 text-sm leading-relaxed text-ink-secondary">
             {activeBrief.physicalMechanism.slice(0, 3).map((point, idx) => (
-              <li key={idx} className="flex items-start gap-2">
+              <li key={idx} className="flex items-start gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-drought-orange shrink-0"
+                  className="mt-2 w-1.5 h-1.5 rounded-full bg-drought-orange shrink-0"
                 />
                 <span>
                   <MathText text={point} />
@@ -255,17 +134,17 @@ export default function BoundedAiBrief({
           </ul>
         </div>
 
-        {/* Regional Mitigation Recommendations */}
-        <div className="space-y-1.5">
-          <div className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-dipole-cyan">
-            REGIONAL MITIGATION RECOMMENDATIONS:
+        {/* Recommended Actions */}
+        <div className="space-y-2 pt-1">
+          <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-dipole-cyan">
+            Recommended actions
           </div>
-          <ul className="space-y-1.5 text-xs leading-relaxed text-ink-secondary">
+          <ul className="space-y-2.5 text-sm leading-relaxed text-ink-secondary">
             {activeBrief.mitigationActions.slice(0, 3).map((action, idx) => (
-              <li key={idx} className="flex items-start gap-2">
+              <li key={idx} className="flex items-start gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-dipole-cyan shrink-0"
+                  className="mt-2 w-1.5 h-1.5 rounded-full bg-dipole-cyan shrink-0"
                 />
                 <span>
                   <MathText text={action} />
@@ -274,26 +153,43 @@ export default function BoundedAiBrief({
             ))}
           </ul>
         </div>
+      </div>
 
-        {/* Bounded Provenance Footer Badge */}
-        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-          {activeBrief.source === "gemini_flash" ||
-          activeBrief.source === "gemini_3_8_flash" ? (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-nominal-green">
-              <Sparkles className="w-3 h-3 shrink-0" aria-hidden="true" />
-              <span>
-                ● BOUNDED AI (
-                {(activeBrief.modelUsed ?? "gemini-3.5-flash-lite").toUpperCase()} ·
-                ZERO-HALLUCINATION LOCK)
-              </span>
+      {/* Real Model / Deterministic Provenance Badge */}
+      <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-2 min-h-[36px]">
+        {isLoading ? (
+          <span
+            role="status"
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-dipole-cyan animate-pulse motion-reduce:animate-none"
+          >
+            <span
+              aria-hidden="true"
+              className="w-1.5 h-1.5 rounded-full bg-dipole-cyan shrink-0"
+            />
+            <span>REFINING EXPLANATION FROM COMPUTED METRICS…</span>
+          </span>
+        ) : isAiSource ? (
+          <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-nominal-green">
+            <span
+              aria-hidden="true"
+              className="w-1.5 h-1.5 rounded-full bg-nominal-green shrink-0"
+            />
+            <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              BOUNDED AI ({(activeBrief.modelUsed ?? "gemini-flash").toLowerCase()}) ·
+              ZERO-HALLUCINATION LOCK
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-dipole-cyan">
-              <Cpu className="w-3 h-3 shrink-0" aria-hidden="true" />
-              <span>● DETERMINISTIC PHYSICS ENGINE</span>
-            </span>
-          )}
-        </div>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-dipole-cyan">
+            <span
+              aria-hidden="true"
+              className="w-1.5 h-1.5 rounded-full bg-dipole-cyan shrink-0"
+            />
+            <Cpu className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>DETERMINISTIC PHYSICS ENGINE</span>
+          </span>
+        )}
       </div>
     </aside>
   );

@@ -20,7 +20,7 @@
 Berbeda dari dashboard cuaca atau grafik tren biasa yang hanya menampilkan satu lokasi dan satu variabel, **NusaShift** membimbing pengguna layaknya detektif sains melalui alur terstruktur:
 
 1. Memilih gejala kerusakan lingkungan yang diamati (misalnya _kekeringan pesisir mendadak_ atau _stres kelembapan lahan gambut_).
-2. Membandingkan **dua wilayah berpasangan** sekaligus—wilayah lokal Indonesia maritim (misalnya Surabaya/Jawa Timur atau Kalimantan Tengah) dan wilayah pasangannya di belahan dunia lain (misalnya Turkana Basin, Kenya atau Piura, Peru)—untuk membuktikan bahwa **satu pemicu iklim global (IOD / ENSO) membuat variabel lingkungan bergerak berlawanan arah secara bersamaan**.
+2. Membandingkan **dua wilayah berpasangan** sekaligus—wilayah lokal Indonesia (misalnya Merauke/Papua, Kalimantan Tengah, atau koridor Trans-Jawa) dan wilayah pasangannya di belahan dunia lain (misalnya Central Valley/Santiago, Chile atau Murray-Darling Basin, Australia)—untuk membuktikan bahwa **satu pemicu iklim global (ENSO / IOD) membuat variabel lingkungan bergerak berlawanan arah atau saling terhubung secara bersamaan**.
 3. Membersihkan bias siklus musiman (_deseasonalization_), menguji signifikansi perubahan secara matematis (_Mann-Kendall Test_, _Sen's Slope_, dan _Pettitt Change-Point_), serta mendeteksi **"stres ekologis senyap" (_silent ecological stress_)** lewat analisis jeda waktu (_lag_) antar-variabel sebelum bencana ekologis terjadi.
 
 ### 1.2 Masalah Nyata NASA yang Diselesaikan
@@ -36,7 +36,7 @@ Berdasarkan brief resmi challenge **`Be An Earth System Trend Detective!`** dan 
 
 - **Kompetitor Surabaya Sangat Minim:** Hanya ada **2 tim lawan** di Surabaya pada kategori ini (`AETHER 2.0` dan `Pemula`), dibandingkan 5 tim di kategori game sebelumnya.
 - **Melampaui NASA Giovanni & Worldview:** _NASA Worldview_ hanya menampilkan visual satelit tanpa statistik. _NASA Giovanni_ punya modul anomali musiman dan kapabilitas generik "trend detection and analysis" per piksel, tapi belum mengemasnya jadi satu alur uji-signifikansi otomatis (Mann-Kendall/Pettitt) yang mudah dipakai non-spesialis, dan tidak membandingkan dua wilayah berlawanan arah dalam satu layar.
-- **Posisi vs. Proyek Kompetitor Lain di Track yang Sama:** Audit publik atas submission lain di challenge ini (per November 2026) menunjukkan beberapa tim _sudah_ memakai Mann-Kendall, Sen's Slope, bahkan validasi silang ke data publikasi resmi (mis. NSIDC, GISTEMP), dan satu di antaranya memakai hook "variabel sama, cerita berlawanan" antar wilayah. Statistik rigor saja karena itu **bukan lagi pembeda mutlak** di track ini—itu sudah jadi standar minimum. Keunggulan nyata NusaShift yang belum ditemukan pada proyek lain yang diaudit: (1) mesin rantai sebab-akibat berjeda waktu (_lag-cascade_) sebagai mekanisme penjelas, bukan sekadar dua grafik berdampingan, dan (2) studi kasus telekoneksi maritim Indonesia (Jawa Timur/Kalimantan vs Afrika Timur/Peru) yang tervalidasi—sudut pandang regional yang tidak dimiliki proyek lain yang ditemukan (mereka umumnya berfokus pada wilayah lain seperti Bangladesh, atau grid global generik).
+- **Posisi vs. Proyek Kompetitor Lain di Track yang Sama:** Audit publik atas submission lain di challenge ini (per November 2026) menunjukkan beberapa tim _sudah_ memakai Mann-Kendall, Sen's Slope, bahkan validasi silang ke data publikasi resmi (mis. NSIDC, GISTEMP), dan satu di antaranya memakai hook "variabel sama, cerita berlawanan" antar wilayah. Statistik rigor saja karena itu **bukan lagi pembeda mutlak** di track ini—itu sudah jadi standar minimum. Keunggulan nyata NusaShift yang belum ditemukan pada proyek lain yang diaudit: (1) mesin rantai sebab-akibat berjeda waktu (_lag-cascade_) sebagai mekanisme penjelas, bukan sekadar dua grafik berdampingan, dan (2) studi kasus telekoneksi maritim Indonesia (Merauke Papua/Kalimantan/Trans-Jawa vs Chile/Australia) yang tervalidasi pada data asli NASA POWER 1985–2025—sudut pandang regional yang tidak dimiliki proyek lain yang ditemukan (mereka umumnya berfokus pada wilayah lain seperti Bangladesh, atau grid global generik).
 
 ### 1.4 Tiga Prinsip Emas Pengembangan Tim
 
@@ -78,8 +78,8 @@ Seluruh kode aplikasi wajib menggunakan standar versi terbaru per **November 202
 | **Bahasa**           | **TypeScript 5.9+** (`typescript@^5.9.0`)                                    | Mode `strict: true` untuk menjamin tipe data deret waktu (_time-series_) dan matriks statistik bebas bug runtime.                                                                       |
 | **Styling**          | **Tailwind CSS v4** (`tailwindcss@^4.0.0`, `@tailwindcss/postcss`)           | Konfigurasi **CSS-first** di `src/app/globals.css` menggunakan `@import "tailwindcss";` dan blok `@theme { ... }`. **Dilarang membuat `tailwind.config.ts` atau `tailwind.config.js`.** |
 | **Linter**           | **ESLint Flat Config** (`eslint.config.mjs`)                                 | Perintah `"lint": "eslint ."` di `package.json` (`next lint` sudah dihapus di Next.js 16).                                                                                              |
-| **Visualisasi Data** | **Recharts** + **Interactive World Map (SVG / React-Simple-Maps / Leaflet)** | Grafik _multi-series anomaly_, _lag-cascade timeline_, dan peta dunia interaktif _click-to-analyze_ dengan pin studi kasus.                                                             |
-| **AI SDK & Model**   | **`@google/genai`** (Official Unified Google GenAI SDK)                      | Gunakan model **`gemini-3.8-flash`** untuk _Hypothesis Triage_ & _Bounded Causal Explainer_ (dilengkapi _deterministic fallback_ jika offline/timeout).                                 |
+| **Visualisasi Data** | **Recharts** + **3D Globe (`GlobeViewport`) & 2D Flat Map (`FlatMapViewport`)** + **KaTeX** | Grafik _multi-series anomaly_, _lag-cascade timeline_, rumus statistik KaTeX, serta globe 3D & peta dunia interaktif _click-to-analyze_ dengan _reverse geocoding_ (`geoResolver.ts`).                                                             |
+| **AI SDK & Model**   | **`@google/genai`** (Official Unified Google GenAI SDK)                      | Gunakan **`gemini-3.5-flash-lite`** sebagai model utama (dengan rantai fallback otomatis ke `gemini-3.6-flash` / `gemini-3.1-flash-lite` + cache 30 menit + _deterministic fallback_ jika offline/timeout).                                 |
 | **Deployment**       | **Vercel**                                                                   | Hosting produksi publik tanpa halaman login agar juri dapat langsung menguji aplikasi.                                                                                                  |
 
 ---
@@ -98,7 +98,7 @@ Seluruh kode aplikasi wajib menggunakan standar versi terbaru per **November 202
 
 2. **Tahap 2 — Interactive World Map & Paired-Region Teleconnection Split-View**
    - Pengguna dapat memilih **1 dari 3 Studi Kasus Terkurasi** sekali klik **ATAU mengklik dua titik koordinat mana saja (`Region A` dan `Region B`) langsung di peta dunia interaktif**.
-   - Sistem menarik data historis kedua wilayah secara paralel (`Promise.all`) dan menampilkan perbandingan berdampingan (**Wilayah A vs. Wilayah B**) untuk membuktikan pola **jungkat-jungkit iklim (_opposite-sign trends_)**—misalnya saat kelembapan tanah dan curah hujan di Surabaya/Jawa Timur turun signifikan akibat fase _Indian Ocean Dipole (IOD)_ / _El Niño_, curah hujan di wilayah pasangannya (Turkana Basin, Kenya atau Piura, Peru) justru melonjak pada periode yang sama.
+   - Sistem menarik data historis kedua wilayah secara paralel (`Promise.all`) dan menampilkan perbandingan berdampingan (**Wilayah A vs. Wilayah B**) untuk membuktikan pola **jungkat-jungkit iklim (_opposite-sign trends_)**—misalnya saat kelembapan tanah dan curah hujan di Merauke (Papua) meningkat signifikan selama periode 1985–2025, Central Valley (Santiago, Chile) justru mengalami penurunan curah hujan dan kelembapan tanah yang signifikan pada rentang waktu yang sama.
 
 3. **Tahap 3 — Deseasonalized Statistical Significance Gate**
    - Sebelum menguji tren, mesin statistik menghapus siklus musiman bulanan (_Monthly Z-Score Deseasonalization_) agar variasi musim kemarau/hujan tidak menyamarkan perubahan iklim jangka panjang.
@@ -117,7 +117,7 @@ Seluruh kode aplikasi wajib menggunakan standar versi terbaru per **November 202
    - **Dual-Layer Toggle (`Citizen / Student View` vs. `Scientific Proof View`):**
      - _Student/Citizen View:_ Menampilkan status risiko dalam bahasa sederhana, diagram panah jeda bulan, dan rekomendasi mitigasi daerah.
      - _Scientific Proof View:_ Membuka tabel statistik lengkap ($\tau$, $Z$-score, $p$-value, Sen's Slope, confidence interval $95\%$), grafik perbandingan data mentah vs. _deseasonalized anomaly_, serta kartu **Cross-Validation Benchmark** yang membandingkan output mesin terhadap tren resmi publikasi **NASA GISTEMP v4** & **NOAA/NASA ONI**.
-   - **Bounded AI Causal Synthesizer (`gemini-3.8-flash`):** Menerima hanya JSON angka hasil perhitungan mesin statistik, lalu menyusun ringkasan narasi kausalitas fisik (maksimal 3 poin tajam) beserta aksi mitigasi lingkungan konkret.
+   - **Bounded AI Causal Synthesizer (`gemini-3.5-flash-lite` + fallback chain):** Menerima hanya JSON angka hasil perhitungan mesin statistik, lalu menyusun ringkasan narasi kausalitas fisik (maksimal 3 poin tajam) beserta aksi mitigasi lingkungan konkret.
 
 ### 4.2 Matriks Prioritas Fitur (Scope Guard)
 
@@ -149,22 +149,24 @@ Aplikasi menarik data bulanan deret waktu historis ($1985\text{--}2025$) langsun
 | `PRECTOTCORR`       | Bias-Corrected Total Precipitation                 | $\text{mm/day}$            | **Indikator Hidrologi:** Mendeteksi defisit/surplus curah hujan berlawanan arah antar-wilayah telekoneksi.            |
 | `T2M`               | Air Temperature at 2 Meters                        | $^\circ\text{C}$           | **Validasi Silang:** Digunakan untuk memvalidasi laju pemanasan regional terhadap benchmark **NASA GISTEMP v4**.      |
 
-### 5.2 Tiga Paket Studi Kasus Terkurasi (Pre-Cached JSON Lokal)
+### 5.2 Tiga Paket Studi Kasus Terkurasi (Pre-Cached JSON Data Asli NASA POWER v2)
 
-Simpan ketiga pasangan data asli hasil tarikan NASA POWER API ini di `src/data/cachedCases.ts` agar aplikasi langsung menyajikan bukti nyata saat dibuka juri:
+Simpan ketiga pasangan data asli ($492\text{ bulan}$, $1985\text{--}2025$) hasil tarikan NASA POWER API di `src/data/realCasesData.json` dan `src/data/cachedCases.ts` (seluruh pasangan berjarak $>200\text{ km}$ agar berada pada sel grid MERRA-2 $0.5^\circ \times 0.625^\circ$ yang terpisah):
 
-1. **Kasus 1 (`iod-surabaya-turkana`): Maritime Indonesia vs. East Africa Climate Seesaw (IOD/ENSO Dipole)**
-   - **Region A:** Surabaya & East Java Coastal Corridor (`lat: -7.2575, lon: 112.7521`)
-   - **Region B:** Turkana Basin, Kenya (`lat: 3.1167, lon: 35.6000`)
-   - **Temuan Ilmiah:** Menunjukkan korelasi negatif signifikan antar-wilayah selama fase _Indian Ocean Dipole_ positif & _El Niño_—ketika kelembapan tanah dan curah hujan di pesisir Jawa Timur mengalami penurunan signifikan, curah hujan di Turkana Basin justru mengalami anomali positif ekstrem.
-2. **Kasus 2 (`enso-kalimantan-peru`): Central Kalimantan Peatlands vs. Piura Coastal Peru (Silent Peatland Drying)**
-   - **Region A:** Central Kalimantan Peatland Basin, Palangkaraya (`lat: -2.2161, lon: 113.9135`)
-   - **Region B:** Piura River Basin, Northern Peru (`lat: -5.1945, lon: -80.6328`)
-   - **Temuan Ilmiah:** Mendemonstrasikan _Silent Ecological Stress_—lonjakan radiasi surya (`ALLSKY_SFC_SW_DWN`) mendahului penurunan kelembapan tanah akar gambut (`GWETROOT`) sebesar $1\text{--}2\text{ bulan}$, sementara pesisir Peru mengalami lonjakan curah hujan berlawanan arah saat siklus ENSO kuat.
-3. **Kasus 3 (`brantas-water-energy`): Brantas Watershed Water-Energy Coupling (Agricultural Drought Early Warning)**
-   - **Region A:** Upper Brantas Watershed, East Java (`lat: -7.9666, lon: 112.6326`)
-   - **Region B:** Lower Brantas Delta, Sidoarjo/Surabaya (`lat: -7.4478, lon: 112.7183`)
-   - **Temuan Ilmiah:** Memetakan rantai jeda waktu (_lag-cascade_) dari defisit kelembapan tanah hulu ke kenaikan suhu permukaan hilir untuk mendukung keputusan alokasi irigasi waduk sebelum puncak musim kemarau.
+1. **Kasus 1 (`indo-chile-dipole`): Merauke Wetlands (Papua) vs. Central Valley Chile (ENSO Seesaw Dipole)**
+   - **Region A:** Merauke Wetlands (Papua), Indonesia (`lat: -8.49, lon: 140.40`)
+   - **Region B:** Central Valley Basin (Santiago), Chile (`lat: -33.45, lon: -70.66`)
+   - **Temuan Ilmiah:** Menunjukkan korelasi negatif signifikan berlawanan arah pada curah hujan (`PRECTOTCORR`, $r \approx -0.225$, $p = 4.80 \times 10^{-7}$) dan kelembapan tanah (`GWETROOT`)—ketika Papua bagian selatan mengalami tren pembasahan signifikan ($\tau_A \approx +0.203$), Central Valley Chile mengalami tren pengeringan signifikan ($\tau_B \approx -0.151$).
+2. **Kasus 2 (`silent-murray-kalimantan`): Murray-Darling Basin vs. Central Kalimantan (Silent Ecological Stress)**
+   - **Region A:** Murray-Darling Basin (Mildura), Australia (`lat: -34.18, lon: 142.16`)
+   - **Region B:** Central Kalimantan (Palangkaraya), Indonesia (`lat: -2.22, lon: 113.91`)
+   - **Temuan Ilmiah:** Mendemonstrasikan _Silent Ecological Stress_ nyata di Region A—lonjakan radiasi surya (`ALLSKY_SFC_SW_DWN`) mendahului penurunan kelembapan tanah akar (`GWETROOT`, $\tau = -0.102$, $p = 7.17 \times 10^{-4}$) sebesar $+1\text{ bulan}$ ($r = -0.448$), sementara tren curah hujan (`PRECTOTCORR`, $p = 0.055$) belum signifikan secara statistik.
+3. **Kasus 3 (`java-water-energy`): Trans-Java Agricultural Corridor: East Java vs. West Java (630 km Water-Energy Cascade)**
+   - **Region A:** East Java Corridor (Surabaya/Sidoarjo), Indonesia (`lat: -7.45, lon: 112.45`)
+   - **Region B:** West Java Citarum-Jakarta Corridor, Indonesia (`lat: -6.21, lon: 106.85`)
+   - **Temuan Ilmiah:** Berjarak $630\text{ km}$ (sel grid MERRA-2 terpisah), memetakan keterkaitan regional (`PRECTOTCORR` $r \approx 0.495$) serta rantai jeda waktu kuat di Jawa Timur dari lonjakan radiasi surya (`ALLSKY_SFC_SW_DWN`) ke penurunan kelembapan tanah akar (`GWETROOT`) $+1\text{ bulan}$ kemudian ($r = -0.620$).
+
+_(Catatan: ID kasus lama `iod-surabaya-turkana`, `enso-kalimantan-peru`, dan `brantas-water-energy` tetap dipertahankan sebagai legacy alias di `cachedCases.ts`.)_
 
 ### 5.3 Benchmark Validasi Silang (_Cross-Validation Reference Data_)
 
@@ -280,7 +282,7 @@ export interface DualRegionAnalysisReport {
 
 ### 6.1 Pembagian Tugas 4 Anggota
 
-- **Anggota 1 (Anda — Solo Sprint 12:30–17:00 WIB $\rightarrow$ Lead Architect & Stats Engine):** Membangun arsitektur Next.js 16 + Tailwind v4, mesin statistik deterministik (`statsEngine.ts`), tarikan API NASA POWER + cache 3 studi kasus, dan endpoint `/api/explain` (`@google/genai` `gemini-3.8-flash`).
+- **Anggota 1 (Anda — Solo Sprint 12:30–17:00 WIB $\rightarrow$ Lead Architect & Stats Engine):** Membangun arsitektur Next.js 16 + Tailwind v4, mesin statistik deterministik (`statsEngine.ts`), tarikan API NASA POWER + cache 3 studi kasus nyata (`realCasesData.json`), reverse geocoding (`geoResolver.ts`), dan endpoint `/api/explain` (`@google/genai` `gemini-3.5-flash-lite` + fallback chain).
 - **Anggota 2 (Bergabung 17:00 WIB — Interactive Map & Spatial UI Developer):** Menyempurnakan peta dunia interaktif _click-to-analyze_ (pemilihan koordinat `Region A` & `Region B`), animasi garis koneksi _teleconnection_ antar-benua, serta responsivitas mobile/desktop.
 - **Anggota 3 (Bergabung 17:00 WIB — Scientific Charts & Dual-Layer Analytics UI):** Memoles grafik Recharts (_Deseasonalized Anomaly Time-Series_, garis vertikal _Pettitt Change-Point_, diagram panah _Lag-Cascade_, dan panel _Cross-Validation Benchmark_).
 - **Anggota 4 (Bergabung 17:00 WIB — Storytelling, Video Demo $\le 30\text{ Detik}$ & Submission Lead):** Menulis seluruh teks bahasa Inggris di UI & portal NASA, merekam & mengedit **Video Demo maksimal 30 detik** dengan subtitle Inggris, menguji semua link di mode _Incognito_, dan memastikan submit tepat waktu.
@@ -310,15 +312,15 @@ export interface DualRegionAnalysisReport {
 ### 7.1 Isian Wajib Form Portal NASA (100% Bahasa Inggris)
 
 - **Project Name:** `NusaShift: Coupled Earth-System Regime & Lag-Cascade Detective`
-- **High-Level Project Summary:** Interactive Earth science detective platform that pairs opposite-trending climate regions (e.g., Maritime Indonesia vs. East Africa/Peru), removes seasonal cycles, proves statistical regime shifts via Mann-Kendall & Pettitt tests, and detects silent ecological drought stress through water-energy lag-cascade analysis.
+- **High-Level Project Summary:** Interactive Earth science detective platform that pairs opposite-trending climate regions (e.g., Maritime Indonesia vs. Central Chile/Australia), removes seasonal cycles, proves statistical regime shifts via Mann-Kendall & Pettitt tests, and detects silent ecological drought stress through water-energy lag-cascade analysis.
 - **Link to Project Demo:** Link video YouTube/Google Drive publik berdurasi **$\le 30\text{ detik}$** dengan subtitle bahasa Inggris.
 - **Link to Final Project:** Live URL Vercel (`https://...vercel.app`) + link repository GitHub publik.
-- **Use of Super Intelligence (SI):** _(nama field belum terverifikasi independen—cek ulang nama asli di portal, lihat 1.5)_ Explain clearly that `gemini-3.8-flash` (via `@google/genai`) is strictly bounded as a hypothesis triage assistant and causal explainer interpreting pre-computed deterministic statistical outputs—never generating or fabricating scientific numbers.
+- **Use of Super Intelligence (SI):** _(nama field belum terverifikasi independen—cek ulang nama asli di portal, lihat 1.5)_ Explain clearly that `gemini-3.5-flash-lite` (with automatic Flash fallback chain via `@google/genai` and deterministic physics fallback) is strictly bounded as a causal explainer interpreting pre-computed deterministic statistical outputs—never generating or fabricating scientific numbers.
 - **NASA Data:** Cite **NASA POWER API v2** (_Prediction Of Worldwide Energy Resources — MERRA-2 & CERES/GPM assimilated daily/monthly time series_: `PRECTOTCORR`, `GWETROOT`, `TS`, `ALLSKY_SFC_SW_DWN`, `T2M`), **NASA GISTEMP v4** (cross-validation benchmark), and official resources listed on the challenge page.
 
 ### 7.2 Poin Kunci Pitching 3 Menit di Depan Juri
 
 1. **Buka dengan Kalimat Kunci Brief NASA:** _"NASA asked us to solve why one Earth variable trends upward in one region and downward in another under the same climate driver—and how to prove those shifts are statistically significant rather than seasonal noise."_
-2. **Tunjukkan Bukti Lokal + Global (_Surabaya vs. Turkana Basin_):** Perlihatkan bagaimana penghapusan siklus musiman dan uji _Mann-Kendall + Pettitt Change-Point_ langsung membuktikan korelasi terbalik IOD/ENSO secara matematis.
-3. **Soroti Deteksi "Silent Ecological Stress":** Tunjukkan bahwa pada kasus lahan gambut Kalimantan, penurunan kelembapan tanah akar terjadi 1–2 bulan _sebelum_ curah hujan tampak menurun—memberikan peringatan dini nyata untuk pencegahan kebakaran dan ketahanan pangan.
+2. **Tunjukkan Bukti Lokal + Global (_Merauke, Papua vs. Central Valley, Chile_):** Perlihatkan bagaimana penghapusan siklus musiman dan uji _Mann-Kendall + Pettitt Change-Point_ langsung membuktikan korelasi terbalik ENSO secara matematis pada data 1985–2025.
+3. **Soroti Deteksi "Silent Ecological Stress":** Tunjukkan bahwa pada kasus _Murray-Darling vs. Central Kalimantan_, penurunan kelembapan tanah akar terjadi $+1\text{ bulan}$ setelah lonjakan radiasi surya sementara tren curah hujan belum signifikan—memberikan peringatan dini nyata untuk pencegahan kekeringan dan kebakaran.
 4. **Tutup dengan Validasi Silang:** Tunjukkan kartu _Cross-Validation Benchmark_ terhadap publikasi **NASA GISTEMP v4** sebagai bukti bahwa mesin statistik tim Anda terkalibrasi secara ilmiah. Hindari klaim "satu-satunya tim yang melakukan ini"—framingkan sebagai kombinasi lag-cascade + studi kasus Indonesia maritim yang belum ditemukan bersamaan di proyek lain (lihat 1.3), bukan klaim keunikan metode statistik itu sendiri.

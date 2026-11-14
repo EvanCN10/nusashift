@@ -1,195 +1,259 @@
-# UI/UX DESIGN BRIEF & VISUAL SYSTEM SPECIFICATION: NusaShift
+# UI/UX DESIGN BRIEF & VISUAL SYSTEM SPECIFICATION (REV 2): NusaShift
 **Coupled Earth-System Regime & Lag-Cascade Detective**
 
-* **Target IDE / Agent:** Antigravity Autonomous Coding Agent
-* **Framework & Styling:** Next.js 16 (App Router) + React 19.2 + **Tailwind CSS v4** (CSS-first `@theme` in `src/app/globals.css`) + Recharts + Lucide React
-* **Visual Paradigm:** **Tactical Geospatial Telemetry & Precision Earth Intelligence** (combining Reference 1: *FuseLab Tactical Telemetry HUD* + Reference 2: *Titanic Plates Seismic & Geospatial Risk Analyzer*)
-* **Language Mandate:** 100% English UI copy, micro-labels, tooltips, and telemetry readouts.
+* **Revision:** 2 — "Cinematic Earth + Narrative Dashboard". This revision **replaces** Rev 1 (Tactical Geospatial Telemetry / 3-column bento HUD). Do not mix instructions from the old version.
+* **Target Agent:** Any autonomous coding agent. Implementation is split into 4 sessions in `docs_production/NASA_MasterPrompt_DesignRevision.md`.
+* **Stack (unchanged):** Next.js 16 (App Router, `reactCompiler: true`) + React 19 + TypeScript `strict` + **Tailwind CSS v4** (CSS-first `@theme` in `src/app/globals.css`, no `tailwind.config.*`) + Recharts + Lucide + `react-globe.gl` / `three`.
+* **New dependency (only one):** `lenis` (smooth scroll). No other animation library.
+* **Language Mandate:** 100% English UI copy, labels, tooltips, and readouts.
+* **Source of truth for data and claims:** `NASA_SSOT_FIX.md`. This brief controls **how it looks and flows**, never what the numbers are.
 
 ---
 
-## 1. Core Aesthetic Philosophy & "Anti-AI-Slop" Guardrails
+## 0. Why This Revision Exists
 
-To ensure **NusaShift** looks like an enterprise NASA/Defense geospatial intelligence platform rather than a generic AI-generated template, the Coding Agent **MUST strictly enforce** the following visual rules:
+Problems observed on the shipped dashboard (below the hero):
 
-1. **NO Generic Purple/Blue SaaS Gradients:** Never use `bg-gradient-to-r from-purple-600 to-blue-600` or neon cyberpunk glow. The base canvas is **Matte Graphite & Deep Obsidian (`#0B0D11` to `#181B22`)**, allowing semantic climate telemetry colors (Burnt Amber/Terracotta, Phosphor Emerald, Solar Gold, and Telemetry Cyan) to stand out with surgical precision.
-2. **Monochrome Topographic Map + High-Contrast Radar Overlays:** Just like Reference 2 (*Titanic Plates*), the interactive world map must use a desaturated dark graphite landmass (`#1A1E26`) over an abyssal ocean (`#090B0E`) with subtle `1px` lat/lon graticule lines (`rgba(255,255,255,0.05)`). Only the active **Region A & Region B Radar Rings**, **Coordinate Callout Pills**, and **Teleconnection Dipole Arc** carry vibrant semantic color.
-3. **1px Hairline Borders & Translucent HUD Panels:** Replicate Reference 1 (*FuseLab*) by framing every card with a crisp `1px solid rgba(255, 255, 255, 0.08)` border, subtle inner top highlight (`inset 0 1px 0 rgba(255, 255, 255, 0.05)`), dark translucent fill (`bg-[#12151B]/90 backdrop-blur-md`), and compact `10px–12px` (`rounded-xl`) corner radii—never bubbly `rounded-3xl` cards or heavy drop shadows.
-4. **Strict Typographic Hierarchy (Editorial Sans + Tabular Monospace):**
-   * **Micro-Headers:** Uppercase, `10px–11px` (`text-[11px]`), `font-semibold`, wide tracking (`tracking-[0.12em]`), muted slate (`text-[#8A94A6]`), paired with a tiny `12px` Lucide icon or `6px` status LED dot.
-   * **Numeric Readouts & Coordinates:** Always use `font-mono tabular-nums` (`JetBrains Mono`) so coordinates (`07°27'00"S, 112°27'00"E`), $p$-values (`p = 0.0018`), Mann-Kendall $\tau$, and Sen's Slope (`-0.038 /dec`) align vertically like cockpit instruments.
-5. **LED Status Dots & Segmented Controls:** Every mode selector and variable pill uses a dark recessed housing (`bg-[#0B0D11] border border-white/10`) with a glowing `6px` status dot (`#22C55E` active, `#F97316` warning, `#475569` inactive) inspired directly by the `NAV | ALT | SPD` panel in Reference 1.
+1. Every statistic (τ, Z, p-value, Sen's slope, Pettitt, CI) is shown at the same level, so a non-specialist cannot tell what matters.
+2. Statistical jargon appears before any plain-language answer.
+3. Panels have equal visual weight, so there is no reading order.
+4. Body text and numbers are too small (10–11px) with low contrast.
+5. Inter is the default "AI template" font.
+
+Requirement from the team PIC: **a user must be able to understand what the dashboard is telling them without statistics training.** The fix is structural, not cosmetic: the dashboard becomes a story with one message per section.
+
+**What is kept from Rev 1:** the approved full-viewport hero composition at 1440px (full-bleed globe with controls over it), the semantic color meanings, the 1px hairline border language, `font-mono tabular-nums` for numbers, and the anti-slop rules.
 
 ---
 
-## 2. Tailwind CSS v4 Design Tokens (`src/app/globals.css`)
+## 1. Design Philosophy & Guardrails
 
-Copy this exact CSS-first configuration into `src/app/globals.css` (do **NOT** create `tailwind.config.ts`):
+1. **One message per screen.** Answer first (Verdict), then proof. Never show a statistic without a plain-language label next to it.
+2. **Two-layer labeling for every number.** Primary line is plain English. Technical term is secondary and smaller. Example: `Rainfall trend +0.60 mm/day per decade` with `Sen's slope` as a small caption below.
+3. **Glassmorphism, restrained.** Frosted translucent panels over a dark space canvas. Soft blur, 1px hairline borders, no neon glow, no heavy shadows, no `rounded-3xl`.
+4. **No purple-to-blue gradients, no emoji as icons, no lorem ipsum, no centered-everything layouts** (see `.agent/anti-slop.md`).
+5. **Color means one thing.** Orange = Region A / drying. Cyan = Region B / wetting. Red = alert only (regime shift, silent stress). Green = validated/calibrated. Gold = moderate significance or active highlight.
+6. **Light and fast.** Motion is purposeful and optional. Everything respects `prefers-reduced-motion`.
+7. **No scroll hijacking.** Native scroll behavior, smoothed by Lenis. The hero is exactly one viewport tall; an animated arrow cue invites the user to scroll once.
+
+---
+
+## 2. Design Tokens (`src/app/globals.css`)
+
+Keep the existing token names so current components do not break. Update values and add glass tokens. Do **not** create `tailwind.config.ts`.
 
 ```css
 @import "tailwindcss";
 
 @theme {
-  /* Base Matte Graphite & Obsidian Surfaces (From Ref 1 & Ref 2) */
-  --color-canvas-950: #090B0E;       /* Deepest map ocean & recessed wells */
-  --color-canvas-900: #0E1116;       /* Primary application background */
-  --color-panel-850: #14181F;        /* Standard HUD card surface */
-  --color-panel-800: #1B2029;        /* Hover / elevated card surface */
-  --color-panel-700: #262C38;        /* Subtle hairline dividers & grid lines */
+  /* Space canvas & surfaces (replace Rev 1 graphite values; names unchanged) */
+  --color-canvas-950: #05070B;   /* deepest space / recessed wells */
+  --color-canvas-900: #090C12;   /* page background */
+  --color-panel-850: #0F141C;    /* glass panel base (used with alpha) */
+  --color-panel-800: #151B25;    /* elevated / hover */
+  --color-panel-700: #222A37;    /* hairlines and dividers */
 
-  /* Typography Colors */
-  --color-ink-primary: #F3F5F8;      /* Crisp white-silver for primary metrics */
-  --color-ink-secondary: #9BA3B2;    /* Muted metallic gray for body & descriptions */
-  --color-ink-muted: #5E6778;        /* Dimmed slate for axis ticks & micro-labels */
+  --color-ink-primary: #F3F5F8;
+  --color-ink-secondary: #B4BCC9;  /* raised from #9BA3B2 for contrast */
+  --color-ink-muted: #7C8697;      /* raised from #5E6778 for contrast */
 
-  /* Semantic Telemetry Accents (From Ref 1 Orange/Green & Ref 2 Radar Gold/Coral) */
-  --color-drought-orange: #F97316;   /* Drying / Warming / Positive Thermal Anomaly */
-  --color-drought-coral: #EF4444;    /* Critical Regime Shift / Silent Stress Alert */
-  --color-radar-gold: #EAB308;       /* Active Coordinate Radar Ring & Moderate Shift */
-  --color-nominal-green: #22C55E;    /* Statistically Validated / Wetness / Calibrated */
-  --color-dipole-cyan: #06B6D4;      /* Region B Counter-Trend / Hydrological Surplus */
+  /* Semantic accents (unchanged meaning) */
+  --color-drought-orange: #F97316;
+  --color-drought-coral: #EF4444;
+  --color-radar-gold: #EAB308;
+  --color-nominal-green: #22C55E;
+  --color-dipole-cyan: #06B6D4;
 
-  /* Fonts */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Fonts (Inter removed) */
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Custom Tactical Utilities */
 @layer utilities {
-  .hud-panel {
-    background-color: rgba(20, 24, 31, 0.88);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  /* Primary glass surface for dashboard cards and floating hero panels */
+  .glass-panel {
+    background-color: rgba(15, 20, 28, 0.55);
+    backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 16px 40px -16px rgba(0, 0, 0, 0.55);
   }
+  /* Recessed well for inputs, chart canvases, code-like readouts */
+  .glass-well {
+    background-color: rgba(5, 7, 11, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  /* Reveal-on-viewport (driven by IntersectionObserver adding .is-visible) */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.is-visible { opacity: 1; transform: none; }
+}
 
-  .hud-well {
-    background-color: #090B0E;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-  }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
 
-  .tactical-grid-bg {
-    background-size: 32px 32px;
-    background-image: 
-      linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  }
+/* Fallback when backdrop-filter is unsupported: use an opaque surface */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-panel { background-color: rgba(15, 20, 28, 0.92); }
 }
 ```
 
----
-
-## 3. Master Viewport & Grid Architecture (Bento Command Layout)
-
-Following the exact spatial structure of **Reference 1 (3-Column HUD over Map + Bottom Timeline)** and **Reference 2 (Top Global Bar + Split Analytical View)**:
-
-```text
-+--------------------------------------------------------------------------------------------------+
-| TOP TELEMETRY BAR (h-14): [Brand: NusaShift] | [View Mode Pill Switcher] | [4 Global KPI Metrics] |
-+---------------------------+------------------------------------------+---------------------------+
-| LEFT COLUMN (3 cols / 28%)| CENTER STAGE (6 cols / 44%)              | RIGHT COLUMN (3 cols / 28%|
-|                           |                                          |                           |
-| 1. HYPOTHESIS TRIAGE HUD  | 3. INTERACTIVE MONOCHROME WORLD MAP      | 5. IDENTIFIED REGIME      |
-|    - 3 Diagnostic Selects |    - Curated Case Quick-Pills (Top-Left) |    SHIFTS & AI BRIEF      |
-|    - 4 Mapped NASA POWER  |    - Concentric Radar Rings on Reg A & B |    - Coordinate Header    |
-|      Variable Rows with   |    - Glowing Dashed Teleconnection Arc   |    - Opposite-Sign Dipole |
-|      Mini Sparklines &    |    - Floating DMS Coordinate Callout     |      Circular Gauge       |
-|      LED Status Dots      |                                          |    - Bounded AI Physical  |
-|                           +------------------------------------------+      Mechanism & Bullet   |
-| 2. GISTEMP BENCHMARK CARD | 4. 4-NODE LAG-CASCADE WAYPOINT STEPPER   |      Mitigation Actions   |
-|    - Live Calibration     |    [Solar Rad] -> [Soil Wet] -> [Skin T] |    - Silent Stress Banner |
-|      vs NASA GISTEMP v4   |    (Styled like Ref 1 WP1->WP2->WP3 bar) |                           |
-+---------------------------+------------------------------------------+---------------------------+
-| BOTTOM ANALYTICS DECK (Full Width / 12 cols):                                                    |
-| - Mode A (Default): Synchronized Dual-Region Deseasonalized Z-Score Charts + Pettitt Shift Line  |
-| - Mode B (Scientific Proof Tab): High-Density Expandable Statistical Matrix (Ref 2 Table Style)  |
-+--------------------------------------------------------------------------------------------------+
-```
-
-* **Desktop (`lg` and `xl`):** 12-column CSS Grid (`grid-cols-12 gap-3.5 p-3.5`) where the top operational workspace fits cleanly in view and the Bottom Analytics Deck sits immediately below without cluttered nested scrollbars.
-* **Tablet / Mobile (`< lg`):** Stacks gracefully in logical investigation order (`Top Bar` $\rightarrow$ `Hypothesis Triage` $\rightarrow$ `Interactive Map` $\rightarrow$ `Lag-Cascade Stepper` $\rightarrow$ `Dual-Region Charts` $\rightarrow$ `AI Brief & Scientific Table`).
+Migration rule: existing classes `.hud-panel`, `.hud-panel-float`, `.hud-well`, `.tactical-grid-bg` are **kept as aliases** during Sessions 1–3 (point them at the glass values) and removed only in Session 4 after no component references them.
 
 ---
 
-## 4. Component-by-Component Visual Mapping from References
+## 3. Typography
 
-### 4.1 `NavbarHeader.tsx` — Derived from Reference 2 ("Titanic plates" Top Bar)
-* **Left:** Compact geometric radar/globe icon + **`NusaShift`** in bold tracking-tight white + subtle badge `NASA POWER v2 · MERRA-2`.
-* **Center (Pill Navigation Switcher):** Recessed dark pill container (`bg-[#090B0E] p-1 rounded-lg border border-white/10`) containing:
-  * `Overview & Map` | `Lag-Cascade` | `Citizen View` | `Scientific Proof`
-  * Active tab uses `bg-[#1B2029] text-white border border-white/15 shadow-sm` with a `6px` glowing dot.
-* **Right (Top-Level Numeric KPI Strip — Exact Reference 2 Pattern):**
-  * Display 3 high-impact summary metrics side-by-side before the `Share URL` button:
-    1. **`-0.68`** *(Yellow/Orange `font-mono text-lg font-bold`)* + stacked label `Dipole Index (r)`
-    2. **`2015-08`** *(Coral `font-mono text-lg font-bold`)* + stacked label `Pettitt Regime Shift`
-    3. **`99.1%`** *(Emerald `font-mono text-lg font-bold`)* + stacked label `GISTEMP Calibration`
+| Role | Font | Use | Loading |
+|---|---|---|---|
+| Display | **Instrument Serif** (regular + italic) | Hero title, section titles, Verdict sentence | `next/font/google` (`Instrument_Serif`, `weight: "400"`, `style: ["normal","italic"]`), variable `--font-instrument-serif` |
+| UI / body | **Geist** | Body, buttons, labels, nav | `next/font/google` (`Geist`), variable `--font-geist` |
+| Numbers | **JetBrains Mono** (kept) | Coordinates, p-values, τ, slopes (`tabular-nums`) | existing, variable `--font-jetbrains-mono` |
 
-### 4.2 `HypothesisTriage.tsx` — Derived from Reference 1 ("FLEET LIST" & "FLIGHT MODE" Panels)
-* **Header:** `⛨ HYPOTHESIS TRIAGE & SENSORS` (`text-[11px] uppercase tracking-[0.12em] text-[#8A94A6]`).
-* **Symptom & Window Controls:** Styled like Reference 1's `FLIGHT MODE` recessed matrix buttons (`Coastal Drought`, `Peatland Drying`, `Flood Dipole`, `Custom`) with an indicator LED dot (`#F97316` when selected) and window selector pills (`40Y | 30Y | 20Y`).
-* **Mapped NASA Variables List (Styled like Reference 1's `FLEET LIST` & `LIVE TELEMETRY` rows):**
-  * Each of the 4 NASA POWER variables (`ALLSKY_SFC_SW_DWN`, `GWETROOT`, `TS`, `PRECTOTCORR`) renders as a sleek horizontal telemetry strip (`bg-[#0E1116] hover:bg-[#1B2029] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between`):
-    * **Left:** Variable code badge (`GWETROOT`) + plain-English label (`Root-Zone Soil Wetness`).
-    * **Center:** Mini SVG sparkline (`48px × 16px`) colored in `#F97316` (decreasing/drying) or `#22C55E` (increasing/wetting).
-    * **Right:** Sen's Slope readout (`-0.042/dec`) + status LED square (`■ p < 0.01`).
+Scale (minimums are mandatory):
 
-### 4.3 `InteractiveWorldMap.tsx` — Derived from Reference 1 & Reference 2 Map Viewports
-* **Map Canvas:** Dark monochrome SVG world vector map (`#181C24` continents, `#262C38` coastlines, `#090B0E` ocean, subtle `15°` lat/lon grid lines).
-* **Top-Left Overlay Controls (Like Reference 1's `2D | 3D` + Scale Bar):**
-  * Pin selector toggle: **`[● Set Region A: Maritime ID]`** vs **`[● Set Region B: Teleconnection Pair]`** + 3 quick-load Case Pills (`Case 1: Surabaya ↔ Turkana`, `Case 2: Kalimantan ↔ Peru`, `Case 3: Brantas Basin`).
-* **Concentric Radar Target Overlays (Exact Reference 2 "Alhambra / Baldwin Park" Style):**
-  * Around **Region A** and **Region B**, render:
-    * Outer dashed SVG circle (`r="36"`, `stroke="#F97316"` for Region A, `stroke="#06B6D4"` for Region B, `stroke-dasharray="3 3"`).
-    * Translucent radial fill (`fill="rgba(249, 115, 22, 0.14)"` for Region A; `fill="rgba(6, 182, 212, 0.14)"` for Region B).
-    * Center pulsing `5px` target dot.
-  * **Floating Coordinate Callout Pill (Exact Reference 2 Style):** Positioned above the radar circle: `bg-[#0E1116]/95 border border-white/15 rounded-full px-2.5 py-1 font-mono text-[11px] text-white shadow-lg` displaying `07°27'S, 112°27'E · East Java`.
-* **Teleconnection Arc:** A curved quadratic Bezier SVG path connecting Region A and Region B with an animated dashed stroke (`stroke="url(#dipoleGradient)" strokeDasharray="6 4"`).
+| Token | Size | Use |
+|---|---|---|
+| Display XL | `clamp(3.25rem, 7vw, 6.5rem)`, line-height 0.95 | Hero title only |
+| Display M | `clamp(1.75rem, 3vw, 2.75rem)` | Verdict sentence, section titles |
+| Key figure | ≥ 24px, mono | The 3 key numbers |
+| Body | **≥ 14px**, line-height 1.6 | All explanatory copy |
+| Caption | 12–13px | Technical-term captions, tooltips |
+| Micro label | 11px uppercase, `tracking-[0.12em]` | Metadata only (never for anything the user must read to understand a result) |
 
-### 4.4 `LagCascadePanel.tsx` — Derived from Reference 1's Horizontal Waypoint Bar (`LAUNCH -> WP1 -> WP2 -> WP3`)
-* Position directly beneath the map canvas (just like the `LAUNCH — WP1 — WP2 — WP3 — WP4 — RTB` progress bar in Reference 1!).
-* Render a 4-node horizontal causal pipeline connected by dashed telemetry lines:
-  1. **Node 1:** `ALLSKY_SFC_SW_DWN` (*Solar Irradiance Driver*)
-  2. **Connector 1:** Glowing pill badge `+1 mo lag · r = -0.64 (p < 0.01)` $\rightarrow$
-  3. **Node 2:** `GWETROOT` (*Root-Zone Soil Wetness*) — **Highlights with a pulsing Coral/Orange ring if `silentEcologicalStressDetected === true`**
-  4. **Connector 2:** Glowing pill badge `+1 mo lag · r = -0.71 (p < 0.01)` $\rightarrow$
-  5. **Node 3:** `TS` (*Earth Skin Temperature*)
-  6. **Connector 3:** Glowing pill badge `+2 mo lag · r = -0.52 (p < 0.05)` $\rightarrow$
-  7. **Node 4:** `PRECTOTCORR` (*Total Precipitation*)
-* Each node uses a circular double-ring indicator (`w-8 h-8 rounded-full border-2`) with a check/warning icon inside, matching Reference 1's waypoint rings.
-
-### 4.5 `BoundedAiBrief.tsx` — Derived from Reference 2's Right Inspector (`IDENTIFIED RISKS`) & Reference 1's Circular Gauge
-* **Top Section — Dipole Strength Circular Gauge (Like Reference 1's `82% COMPLETE` Ring):**
-  * SVG circular progress ring showing `|dipoleCorrelationR| * 100` (e.g., `68% DIPOLE COUPLING`) with a warm orange-to-gold stroke gradient, paired with right-aligned metadata rows:
-    * `Driver:` `IOD / ENSO Teleconnection`
-    * `Direction:` `OPPOSITE-SIGN CONFIRMED`
-    * `Silent Stress:` `ACTIVE (Root Zone Drying)`
-* **Bottom Section — Structured Risk & Mitigation Brief (Exact Reference 2 `IDENTIFIED RISKS` Layout):**
-  * Bold uppercase section header: `CAUSAL MECHANISM & POLICY TRIAGE`
-  * Key-value metadata block in `font-mono text-xs`:
-    * `Region A:` `East Java Corridor (-7.45°, 112.45°)`
-    * `Region B:` `Turkana Basin, Kenya (3.12°, 35.60°)`
-    * `Primary Shift:` `Pettitt Breakpoint at 2015-08 (p = 0.002)`
-  * **`Physical Mechanism:`** 2–3 concise evidence-bound bullet points citing the exact computed slopes and lag months.
-  * **`Recommendations:`** Bulleted actionable mitigation steps (styled identically to Reference 2's bottom-right `Recommendations:` list) + transparent provenance badge (`Verified Stats + Gemini 3.8 Flash` or `Deterministic Rule Engine`).
-
-### 4.6 `DualRegionCharts.tsx` & `ScientificProofDrawer.tsx` — Derived from Reference 1 Bottom Bar Chart & Reference 2 Stacked Oscilloscope + Expandable Table
-* **Synchronized Dual-Region Time-Series Deck (Reference 1 & 2 Chart Style):**
-  * Top-right chart controls: Variable selector tabs + `Deseasonalized Z-Score` vs `Raw Monthly` pill toggle.
-  * Two stacked or side-by-side synchronized Recharts `ComposedChart` panels (`Region A` in `#F97316` Burnt Orange; `Region B` in `#06B6D4` Telemetry Cyan or `#22C55E` Phosphor Green):
-    * Dark recessed chart canvas (`bg-[#090B0E] rounded-lg p-3 border border-white/5`).
-    * Subtle horizontal grid lines (`stroke="rgba(255,255,255,0.05)" strokeDasharray="2 2"`).
-    * Zero anomaly baseline (`ReferenceLine y={0} stroke="rgba(255,255,255,0.2)"`).
-    * **Pettitt Change-Point Vertical Marker:** Prominent vertical dashed line (`stroke="#EF4444" strokeWidth={1.5} strokeDasharray="4 4"`) with top badge `Regime Shift: YYYY-MM`.
-* **Scientific Proof Table (`ScientificProofDrawer.tsx` — Exact Reference 2 Expandable Table Style):**
-  * When `Scientific Proof View` is active, display a high-density tabular matrix where each row represents a variable pair across Region A & Region B:
-    * **Left Severity Badge:** Rounded square (`w-11 h-8 rounded-md font-mono font-bold text-xs flex items-center justify-center`) colored by significance (`bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40` for `p < 0.01`, `bg-[#EAB308]/20 text-[#EAB308]` for `p < 0.05`, `bg-white/5 text-[#8A94A6]` for noise) displaying `τ = -0.31`.
-    * **Columns:** `Variable & NASA Sensor` | `Region` | `Coordinates` | `Mann-Kendall Z & p-value` | `Sen's Slope / Decade (95% CI)` | `Pettitt Shift Date`.
-    * Include the **NASA GISTEMP v4 Cross-Validation Benchmark Card** right alongside the table showing `Reference Slope` vs `Engine Computed Slope` and `Deviation %` with a green `CALIBRATED` LED indicator.
+Section eyebrow pattern (as in the reference image): a short 24px hairline + micro label, e.g. `── SECTOR 1 · VERDICT`.
 
 ---
 
-## 5. Prompt Snippet to Paste into Antigravity IDE
+## 4. Hero (exactly one viewport: `h-dvh`, no inner page scroll)
 
-When starting your build in Antigravity, attach `prd_tele_seesaw_agent_ready.md`, `nusashift_app_flow.md`, and this `ui_ux_design_brief_nusashift.md`, then use this instruction:
+Reference composition (provided by the team): large serif title on the left, a large realistic celestial body filling the right, starfield behind, minimal top bar, small caption labels at the edges.
 
-> *"Read `prd_tele_seesaw_agent_ready.md`, `nusashift_app_flow.md`, and `ui_ux_design_brief_nusashift.md`. Build the **NusaShift** web application (`Be An Earth System Trend Detective!`) strictly following the Tactical Geospatial Telemetry visual system in `ui_ux_design_brief_nusashift.md` (matte graphite `#0E1116` surfaces, 1px hairline HUD borders, monochrome SVG world map with concentric radar target overlays and floating DMS coordinate pills, Reference 1's horizontal waypoint stepper for the 4-node Water-Energy Lag-Cascade, Reference 2's top KPI strip and right-hand Identified Risks inspector for the Bounded AI Brief, and synchronized deseasonalized anomaly charts). Use Next.js 16, React 19.2 (`reactCompiler: true`), and Tailwind CSS v4 `@theme` tokens in `src/app/globals.css` with zero purple gradients or generic AI templates."*
+![Hero reference](design_reference/hero_reference_mercury.jpg)
+
+> The image is a composition reference only (typography placement, scale of the celestial body, starfield, edge micro-labels). Do not copy its brand, copy text, or its planet; NusaShift shows Earth.
+
+Layout at 1440×900 (desktop):
+
+* **Top bar (h-14):** left brand `NusaShift` (display serif or Geist semibold), center-left an active-case indicator, right: `Share` and `Export brief` as quiet text buttons. No tab switcher (the 4-tab view-mode switcher is removed; navigation moves to the dashboard sticky mini-nav).
+* **Left column (~42% width, vertically centered):**
+  1. Eyebrow: `── NASA SPACE APPS 2026 · EARTH SYSTEM TREND DETECTIVE`
+  2. Title (Display XL, serif): `Two regions. One climate signal.` (final copy may be tuned, must stay ≤ 2 lines)
+  3. Subtitle (serif italic): the active case in plain English, e.g. `Merauke, Indonesia and Santiago, Chile move in opposite directions.`
+  4. Description (body, ≤ 3 lines, `max-w-md`).
+  5. Three key figures in a row (mono, large) with captions, sourced from the active report: dipole coupling `r`, regime shift date, calibration %.
+  6. Primary action: `Explore the evidence ↓` (scrolls to Verdict). Secondary: case pills (3 curated cases) as small segmented control.
+* **Right/center:** realistic globe (Section 5), allowed to bleed off the right edge like the reference. Click-to-analyze is preserved. Region A/B markers, arc, and pill labels stay visible on top of the photographic texture.
+* **Bottom edge:** left `SCROLL` micro label + bouncing arrow (Section 6.2), center `DRAG TO ROTATE`, right the live/cached feed badge (`CACHED NASA POWER V2` or `LIVE NASA POWER V2`).
+* The Hypothesis Triage panel and the AI Brief panel **leave the hero**. They reappear inside the dashboard (Sections 7.1 and 7.3).
+* Tablet/mobile (`< lg`): globe on top at ~55vh, text below, hero may exceed one viewport; arrow cue still shown.
+
+---
+
+## 5. Realistic Globe Specification (`GlobeViewport.tsx`)
+
+Goal: a photographic Earth in space that stays light.
+
+* **Surface:** replace the monochrome polygon land (`polygonsData`) with texture-based rendering. Use `MeshPhongMaterial` with `map` (day color), `bumpMap` (relief, low `bumpScale`), and `specularMap` (oceans shine, land does not). Remove the country polygons layer, **but keep click-to-coordinate** via `onGlobeClick`.
+* **Textures:** NASA Visible Earth / Blue Marble (public domain). Store in `public/textures/`. Target ≤ 2048px wide, JPG/WebP, **total ≤ ~3 MB**. Record the source URL and credit in `public/textures/CREDITS.md` and in the app footer.
+* **Night side (stretch goal, only if frame budget allows):** emissive city-lights map (NASA Black Marble) with a directional "sun" light. Skip if it harms FPS.
+* **Atmosphere:** `showAtmosphere` with a soft cyan-blue rim (`#5FA8D3` range), moderate altitude. No heavy bloom.
+* **Space background:** a lightweight starfield (single `THREE.Points` with ~1500–2500 points, or a compressed background image). Slow parallax from camera rotation only. No video.
+* **Overlays on photo:** Region A orange / Region B cyan markers and rings, gradient dipole arc, DMS pills. Increase arc stroke and pill contrast so they remain legible on bright land.
+* **Camera:** keep fly-in intro and pair/regionA focus logic. Keep `enableZoom = false` for wheel (page must scroll); +/− buttons remain.
+* **Performance budget (mandatory):**
+  * Cap `renderer` pixel ratio at 1.75.
+  * Pause the render loop when the hero is out of the viewport (IntersectionObserver) and when the tab is hidden.
+  * Keep `ssr: false` dynamic import (already in `InteractiveWorldMap.tsx`).
+  * Load textures lazily; show the existing `INITIALIZING 3D GLOBE…` state until ready.
+  * Fallback: if WebGL is unavailable, keep the existing 2D `FlatMapViewport` path.
+* **Reduced motion:** no auto-rotate, no ring pulse, no arc dash animation (already partially implemented; keep it).
+
+---
+
+## 6. Motion & Scroll
+
+### 6.1 Smooth scroll (Lenis)
+* Add `lenis`. Mount a single client provider in `layout.tsx` (use `lenis/react`'s `ReactLenis root`, or a small `useEffect` wrapper).
+* Disable Lenis (or skip smoothing) when `prefers-reduced-motion: reduce`.
+* Any element with its own inner scroll (tables, accordions, drawers) gets `data-lenis-prevent` so wheel events are not hijacked.
+* Anchor navigation (`Explore the evidence`, mini-nav) uses Lenis `scrollTo` with an offset equal to the sticky mini-nav height.
+
+### 6.2 Scroll cue
+* Below the hero content: label `SCROLL` + a chevron arrow that loops a gentle up-down bounce (`translateY` 0→8px, ~1.6s ease-in-out infinite). Hidden after the user scrolls past ~80px. Static (no bounce) under reduced motion. `aria-hidden` on the decorative arrow; the control itself is a real `<button>` that scrolls to Verdict.
+
+### 6.3 Reveal on viewport
+* Implement with one small `useReveal` hook / component using `IntersectionObserver` (`threshold ≈ 0.15`, `rootMargin: "0px 0px -8% 0px"`), toggling `.is-visible` on `.reveal` elements once (do not re-hide).
+* Stagger children by 60–90ms via inline `transitionDelay`. Never animate layout (only `opacity` and `transform`) so CLS stays 0.
+
+---
+
+## 7. Narrative Dashboard (below the hero)
+
+Container: `max-w-[1200px]` centered text column for narrative, wider (`max-w-[1320px]`) for charts. One section per message, generous vertical rhythm (`py-20 lg:py-28`). Every section starts with the eyebrow pattern and a Display M title.
+
+**Sticky mini-nav:** appears after the hero. Glass pill, anchors `Verdict · Evidence · Mechanism · Proof`, highlights the active section (IntersectionObserver). Height ≤ 48px.
+
+### 7.1 Section 1 — Verdict (the answer)
+* Display M serif sentence generated by deterministic code from the report (no AI needed), e.g. `Merauke is getting wetter while Santiago is drying.`
+* One status badge: `OPPOSITE-SIGN` / `COUPLED` / `SILENT STRESS DETECTED` (red only for the alert).
+* Three key figures (large mono) each with a plain label and a one-line meaning:
+  * Coupling strength (from `dipoleCorrelationR`)
+  * Regime shift date (Pettitt)
+  * Statistical confidence (p-value bucket rendered as `Very strong / Strong / Weak`)
+* Beneath: the **Hypothesis controls** (symptom, ecosystem, window) as a compact segmented row, so users can change the question without leaving the story. NASA variable names are shown as friendly labels first (`Soil wetness` not `GWETROOT`), code as caption.
+
+### 7.2 Section 2 — Evidence (the picture)
+* The synchronized dual-region chart (existing `DualRegionCharts.tsx`), one variable at a time with a simple variable switcher.
+* Exactly **one annotation**: the Pettitt regime shift marker with label `Regime shift: YYYY-MM`. Jargon in tooltips only.
+* Chart text ≥ 12px, axis ticks ≥ 11px, Region A orange, Region B cyan, zero baseline subtle.
+* A one-sentence caption under the chart states what to look for.
+
+### 7.3 Section 3 — Mechanism (the why)
+* Lag-cascade as a 4-step horizontal sequence (existing `LagCascadePanel.tsx` content): `Sunlight → Soil wetness → Surface heat → Rainfall`, each connector showing `+1 month later` in plain words, with `r` as a caption. Silent Ecological Stress gets the single red callout here.
+* Next to it, the **Bounded AI brief** (existing `BoundedAiBrief.tsx`): max 3 bullets + recommended actions + provenance badge (`BOUNDED AI (gemini-3.5-flash-lite) · ZERO-HALLUCINATION LOCK` or `DETERMINISTIC PHYSICS ENGINE`). Show the actual `modelUsed` from the API response.
+
+### 7.4 Section 4 — Proof (for scientists and judges)
+* `ScientificProofDrawer.tsx` as an **accordion, closed by default**, titled `Scientific proof: full statistics`.
+* Inside: the 10-row matrix (5 variables × 2 regions), NASA GISTEMP v4 calibration card, KaTeX formulas, NASA data links. The existing responsive table behavior is kept; wrap with `data-lenis-prevent`.
+* Footer attribution: NASA POWER v2, GISTEMP v4, Earth texture credits.
+
+**View-mode removal:** `viewMode` (`overview | lag_cascade | citizen | scientific`) is retired as a UI concept. Plain-English copy is the default everywhere. The `?view=scientific` URL param must still work by opening the Proof accordion and scrolling to it; `?view=lag_cascade` scrolls to Mechanism; `?view=citizen` is ignored gracefully.
+
+---
+
+## 8. Component Mapping
+
+| Component | Rev 2 role | Change level |
+|---|---|---|
+| `src/app/layout.tsx` | Fonts (Instrument Serif, Geist, JetBrains Mono), Lenis provider | Modify |
+| `src/app/globals.css` | New tokens, `.glass-*`, `.reveal`, aliases | Modify |
+| `src/app/page.tsx` | Orchestrates Hero + 4 sections + mini-nav; keeps URL state and handlers | Heavy modify |
+| `src/components/NavbarHeader.tsx` | Slim hero top bar (brand, Share, Export) | Heavy modify |
+| `src/components/GlobeViewport.tsx` | Realistic globe, starfield, perf gating | Heavy modify |
+| `src/components/MapControlsBar.tsx` | Compact case pills, A/B toggle, feed badge | Modify |
+| `src/components/HypothesisTriage.tsx` | Compact control row inside Verdict; friendly labels | Modify |
+| `src/components/BoundedAiBrief.tsx` | Mechanism side card; shows `modelUsed` | Modify |
+| `src/components/DualRegionCharts.tsx` | Evidence section | Modify |
+| `src/components/LagCascadePanel.tsx` | Mechanism steps in plain words | Modify |
+| `src/components/ScientificProofDrawer.tsx` | Proof accordion, closed by default | Modify |
+| NEW `src/components/ScrollCue.tsx`, `StickySectionNav.tsx`, `Reveal.tsx`, `LenisProvider.tsx` | As specified in Section 6–7 | New |
+
+**Do not modify:** `src/lib/statsEngine.ts`, `src/lib/nasaPowerClient.ts`, `src/lib/geoResolver.ts`, `src/app/api/*`, `src/data/*`, `src/types/climate.ts` (except additive display helpers placed in new files).
+
+---
+
+## 9. Accessibility & Performance Gates
+
+* Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large display text; verify on top of the glass panels over the brightest part of the globe.
+* Visible focus ring on every interactive element; full keyboard path through mini-nav, case pills, accordion.
+* Globe keeps `role="application"` with a descriptive `aria-label`; add a text alternative of the active pair above the fold (it is already in the hero copy).
+* Targets (desktop, production build): Lighthouse Performance ≥ 80, Accessibility ≥ 95, CLS < 0.05, no console errors, first meaningful hero paint without waiting for the globe (text renders first).
+* `prefers-reduced-motion`: Lenis off, reveals shown instantly, no bounce, no ring pulses.
+* No new dependency other than `lenis`.
+
+---
+
+## 10. Prompt Snippet to Paste into the Implementing Agent
+
+> *"Read, in this order: (1) every file in `docs_production/` — especially `NASA_UIUXDesignBrief.md` (Rev 2), `NASA_SSOT_FIX.md`, `NASA_PRD.md`, `NASA_APP_FLOW.md`, and `NASA_MasterPrompt_DesignRevision.md`; then (2) `.agent/anti-slop.md` and `.agent/ponytail.md`. Then execute **only** the session I name from `NASA_MasterPrompt_DesignRevision.md`. Do not touch the statistics engine, API routes, or data. All UI copy must be English. Finish by running `npm run typecheck`, `npm run lint`, and `npm run build` and report the exact results."*

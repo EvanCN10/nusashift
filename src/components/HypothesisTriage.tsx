@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Info, ShieldAlert } from "lucide-react";
-import Tex from "@/components/math/Tex";
-import { texNum } from "@/components/math/texFormat";
+import { Info, SlidersHorizontal } from "lucide-react";
 import {
   ECOSYSTEM_OPTIONS,
   NASA_VARIABLES,
   SYMPTOM_PRESETS,
   WINDOW_OPTIONS,
 } from "@/data/nasaVariables";
+import {
+  describeTrendDirection,
+  FRIENDLY_VARIABLES,
+} from "@/lib/narrative";
 import type {
   DualRegionAnalysisReport,
   EcosystemType,
-  MonthlyObservation,
   NasaVariableCode,
   SymptomId,
 } from "@/types/climate";
@@ -34,27 +35,7 @@ const CORE_SENSOR_CODES: NasaVariableCode[] = [
   "PRECTOTCORR",
 ];
 
-function buildSparklinePath(series: MonthlyObservation[]): string {
-  if (series.length < 2) return "M 0 9 L 56 9";
-  // Sample annual chunks (~40 points) for crisp telemetry sparkline
-  const step = Math.max(1, Math.floor(series.length / 28));
-  const sampled: number[] = [];
-  for (let i = 0; i < series.length; i += step) {
-    sampled.push(series[i].deseasonalizedZ);
-  }
-  const min = Math.min(...sampled, -2);
-  const max = Math.max(...sampled, 2);
-  const range = Math.max(0.1, max - min);
-
-  return sampled
-    .map((val, idx) => {
-      const x = (idx / Math.max(1, sampled.length - 1)) * 56;
-      const y = 16 - ((val - min) / range) * 14;
-      return `${idx === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
-
+/** Compact Verdict hypothesis controls with friendly-first variable labels. */
 export default function HypothesisTriage({
   report,
   activeVariable,
@@ -67,32 +48,48 @@ export default function HypothesisTriage({
     report.primaryVariable
   );
 
-  const inspectedMeta = NASA_VARIABLES[inspectedCode] ?? NASA_VARIABLES.GWETROOT;
-  const gistemp = report.gistempValidation;
+  const displayCode = CORE_SENSOR_CODES.includes(activeVariable)
+    ? activeVariable
+    : inspectedCode;
+  const inspectedMeta = NASA_VARIABLES[displayCode] ?? NASA_VARIABLES.GWETROOT;
+  const inspectedFriendly = FRIENDLY_VARIABLES[displayCode];
 
   return (
-    <aside
-      aria-label="Hypothesis triage and NASA sensors"
-      className="flex flex-col gap-3.5"
+    <div
+      aria-label="Adjust research question and track satellite indicators"
+      className="glass-panel rounded-xl p-5 sm:p-6 space-y-5"
     >
-      {/* Section 1: 3-Step Diagnostic Triage */}
-      <section className="hud-panel rounded-xl p-3.5 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary flex items-center gap-1.5">
-            <ShieldAlert className="w-3.5 h-3.5 text-drought-orange" aria-hidden="true" />
-            <span>Hypothesis Triage &amp; Sensors</span>
-          </h2>
-          <span className="text-[10px] font-mono text-ink-secondary">
-            STEP 1 · AUTO-MAP
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-ink-secondary">
+          <SlidersHorizontal
+            className="w-4 h-4 text-drought-orange shrink-0"
+            aria-hidden="true"
+          />
+          <span className="font-mono text-[11px] uppercase tracking-[0.12em]">
+            Adjust the question · {report.startYear}–{report.endYear}
           </span>
         </div>
+        <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+          Auto-maps 4 NASA satellite indicators
+        </span>
+      </div>
 
-        {/* Q1 Observed Symptom (2x2 Matrix) */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary mb-1.5">
-            1. Observed Environmental Symptom
+      {/* Compact Control Row: Symptom, Ecosystem, Timeframe */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Q1 Symptom */}
+        <div className="lg:col-span-5 space-y-2">
+          <p
+            id="triage-symptom-label"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted"
+          >
+            1. Observed symptom
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div
+            role="group"
+            aria-labelledby="triage-symptom-label"
+            className="grid grid-cols-2 gap-2"
+          >
             {(Object.keys(SYMPTOM_PRESETS) as SymptomId[]).map((symId) => {
               const preset = SYMPTOM_PRESETS[symId];
               const active = report.symptom === symId;
@@ -102,10 +99,10 @@ export default function HypothesisTriage({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onSymptomChange(symId)}
-                  className={`min-h-[34px] px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-drought-orange ${
+                  className={`min-h-[40px] px-3 py-2 rounded-lg text-left text-sm font-medium flex items-center gap-2 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange ${
                     active
-                      ? "bg-panel-800 text-ink-primary border border-drought-orange/50"
-                      : "hud-well text-ink-secondary hover:text-ink-primary hover:bg-panel-800"
+                      ? "bg-white/[0.09] text-ink-primary border border-drought-orange/55"
+                      : "glass-well text-ink-secondary hover:text-ink-primary hover:bg-white/[0.05] border border-white/10"
                   }`}
                 >
                   <span
@@ -121,12 +118,19 @@ export default function HypothesisTriage({
           </div>
         </div>
 
-        {/* Q2 Target Ecosystem */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary mb-1.5">
-            2. Target Ecosystem Profile
+        {/* Q2 Ecosystem */}
+        <div className="lg:col-span-4 space-y-2">
+          <p
+            id="triage-ecosystem-label"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted"
+          >
+            2. Target ecosystem
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div
+            role="group"
+            aria-labelledby="triage-ecosystem-label"
+            className="grid grid-cols-2 gap-2"
+          >
             {ECOSYSTEM_OPTIONS.map((eco) => {
               const active = report.ecosystem === eco.id;
               return (
@@ -135,10 +139,10 @@ export default function HypothesisTriage({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onEcosystemChange(eco.id)}
-                  className={`min-h-[30px] px-2 py-1 rounded-md text-[11px] font-medium text-left flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-dipole-cyan ${
+                  className={`min-h-[40px] px-3 py-2 rounded-lg text-left text-sm font-medium flex items-center gap-2 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dipole-cyan ${
                     active
-                      ? "bg-panel-800 text-ink-primary border border-white/20"
-                      : "hud-well text-ink-secondary hover:text-ink-primary hover:bg-panel-800"
+                      ? "bg-white/[0.09] text-ink-primary border border-dipole-cyan/55"
+                      : "glass-well text-ink-secondary hover:text-ink-primary hover:bg-white/[0.05] border border-white/10"
                   }`}
                 >
                   <span
@@ -154,12 +158,19 @@ export default function HypothesisTriage({
           </div>
         </div>
 
-        {/* Q3 Historical Window */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary mb-1.5">
-            3. Historical Analysis Window
+        {/* Q3 Window */}
+        <div className="lg:col-span-3 space-y-2">
+          <p
+            id="triage-window-label"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted"
+          >
+            3. History window
           </p>
-          <div className="hud-well p-1 rounded-lg grid grid-cols-3 gap-1">
+          <div
+            role="group"
+            aria-labelledby="triage-window-label"
+            className="glass-well p-1.5 rounded-lg grid grid-cols-3 gap-1.5"
+          >
             {WINDOW_OPTIONS.map((win) => {
               const active = report.startYear === win.startYear;
               return (
@@ -168,9 +179,9 @@ export default function HypothesisTriage({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onWindowChange(win.startYear, win.endYear)}
-                  className={`min-h-[28px] px-1.5 py-1 rounded text-[11px] font-mono tabular-nums font-medium transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-drought-orange ${
+                  className={`min-h-[34px] px-2 py-1.5 rounded-md text-sm font-mono tabular-nums font-medium transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange ${
                     active
-                      ? "bg-panel-800 text-ink-primary border border-white/15"
+                      ? "bg-white/[0.12] text-ink-primary border border-white/20"
                       : "text-ink-secondary hover:text-ink-primary border border-transparent"
                   }`}
                 >
@@ -180,105 +191,53 @@ export default function HypothesisTriage({
             })}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Section 2: Mapped NASA POWER Telemetry Strips (FLEET LIST style) */}
-      <section className="hud-panel rounded-xl p-3.5 flex flex-col gap-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary">
-            Active NASA POWER Telemetry
-          </h2>
-          <span className="text-[10px] font-mono text-ink-secondary">
-            REGION A · {report.startYear}–{report.endYear}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
+      {/* Friendly-First Indicator Pills (NASA codes strictly as captions) */}
+      <div className="pt-4 border-t border-white/[0.08] space-y-3">
+        <div
+          role="group"
+          aria-label="Inspect satellite indicators"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5"
+        >
           {CORE_SENSOR_CODES.map((code) => {
             const meta = NASA_VARIABLES[code];
-            const trend = report.trendsA[code];
-            const isSelected = activeVariable === code;
-            const isAdverse =
-              (code === "GWETROOT" || code === "PRECTOTCORR") &&
-              trend.direction === "DECREASING";
-            const isThermalSpike =
-              (code === "TS" || code === "ALLSKY_SFC_SW_DWN") &&
-              trend.direction === "INCREASING";
-            const strokeColor =
-              !trend.isAvailable
-                ? "#5E6778"
-                : isAdverse || isThermalSpike
-                ? "#F97316"
-                : "#22C55E";
-
-            const sigBadge = !trend.isAvailable
-              ? { label: "OCEAN N/A", tex: null, cls: "text-ink-secondary bg-white/5" }
-              : trend.significanceLevel === "HIGHLY_SIGNIFICANT"
-              ? { label: null, tex: "p < 0.01", cls: "text-drought-coral bg-drought-coral/15" }
-              : trend.significanceLevel === "SIGNIFICANT"
-              ? { label: null, tex: "p < 0.05", cls: "text-radar-gold bg-radar-gold/15" }
-              : { label: "Noise", tex: null, cls: "text-ink-secondary bg-white/5" };
+            const friendly = FRIENDLY_VARIABLES[code];
+            const trendA = report.trendsA[code];
+            const selected = activeVariable === code;
+            const directionText = trendA.isAvailable
+              ? describeTrendDirection(code, trendA)
+              : "Ocean N/A";
 
             return (
               <button
                 key={code}
                 type="button"
-                aria-pressed={isSelected}
+                aria-pressed={selected}
                 onMouseEnter={() => setInspectedCode(code)}
                 onFocus={() => setInspectedCode(code)}
                 onClick={() => {
                   setInspectedCode(code);
                   onSelectVariable(code);
                 }}
-                className={`w-full hud-well hover:bg-panel-800 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2 transition text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-drought-orange ${
-                  isSelected
-                    ? "border-drought-orange/55 bg-panel-800"
-                    : "border-white/5"
+                className={`rounded-lg px-3.5 py-2.5 text-left transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-drought-orange ${
+                  selected
+                    ? "bg-white/[0.09] border border-drought-orange/55"
+                    : "glass-well border border-white/10 hover:bg-white/[0.05]"
                 }`}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] font-semibold text-ink-primary">
-                      {code === "ALLSKY_SFC_SW_DWN" ? "SW_DWN" : code}
-                    </span>
-                    <span className="text-[10px] text-ink-secondary truncate">
-                      · {meta.shortLabel}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-ink-secondary truncate">
-                    {meta.physicalRole}
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-ink-primary">
+                    {friendly.name}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">
+                    {code === "ALLSKY_SFC_SW_DWN" ? "SW_DWN" : code}
+                  </span>
                 </div>
-
-                {/* Mini Sparkline */}
-                <svg
-                  width="56"
-                  height="18"
-                  viewBox="0 0 56 18"
-                  aria-hidden="true"
-                  className="shrink-0"
-                >
-                  <path
-                    d={buildSparklinePath(trend.series)}
-                    fill="none"
-                    stroke={strokeColor}
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-
-                {/* Slope + Significance LED */}
-                <div className="text-right shrink-0">
-                  <div className="font-mono tabular-nums text-[11px] font-semibold text-ink-primary">
-                    {trend.isAvailable
-                      ? `${trend.sensSlopePerDecade > 0 ? "+" : ""}${trend.sensSlopePerDecade.toFixed(3)}`
-                      : "N/A"}
-                  </div>
-                  <span
-                    className={`inline-block font-mono text-[9px] px-1.5 py-0.5 rounded ${sigBadge.cls}`}
-                  >
-                    ■ {sigBadge.tex ? <Tex math={sigBadge.tex} /> : sigBadge.label}
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-secondary">
+                  <span>{meta.physicalRole}</span>
+                  <span className="text-ink-primary font-medium capitalize">
+                    {directionText}
                   </span>
                 </div>
               </button>
@@ -286,66 +245,25 @@ export default function HypothesisTriage({
           })}
         </div>
 
-        {/* Educational Sensor Definition Box */}
-        <div className="hud-well rounded-lg p-2.5 text-[11px] border border-white/10">
-          <div className="flex items-center gap-1.5 font-semibold text-ink-primary mb-1">
-            <Info className="w-3.5 h-3.5 text-dipole-cyan shrink-0" aria-hidden="true" />
-            <span>
-              {inspectedMeta.shortLabel} ({inspectedMeta.unit})
-            </span>
-          </div>
-          <p className="text-ink-secondary leading-relaxed">
-            {inspectedMeta.studentDefinition}
-          </p>
-          <p className="mt-1 font-mono text-[10px] text-dipole-cyan">
-            Heritage: {inspectedMeta.nasaInstrumentHeritage}
-          </p>
-        </div>
-      </section>
-
-      {/* Section 3: Live NASA GISTEMP v4 Calibration Mini-Card */}
-      <section className="hud-panel rounded-xl p-3.5">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary">
-            GISTEMP v4 Cross-Validation
-          </h2>
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-nominal-green bg-nominal-green/15 px-2 py-0.5 rounded-full border border-nominal-green/30">
-            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-            <span>{gistemp.isCalibrated ? "CALIBRATED" : "CHECK"}</span>
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 hud-well rounded-lg p-2.5 font-mono tabular-nums text-xs">
-          <div>
-            <div className="text-[10px] text-ink-secondary font-sans">
-              NASA OLS Reference
-            </div>
-            <div className="text-ink-primary font-semibold">
-              <Tex
-                math={`${texNum(gistemp.publishedReferenceSlopePerDecade, 3, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}`}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] text-ink-secondary font-sans">
-              Engine Sen&apos;s Slope
-            </div>
-            <div className="text-nominal-green font-semibold">
-              <Tex
-                math={`${texNum(gistemp.computedSlopePerDecade, 3, true)}\\,^{\\circ}\\mathrm{C}\\,\\mathrm{dec}^{-1}`}
-              />
-            </div>
-          </div>
-          <div className="col-span-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-ink-secondary">
-            <span>
-              MK <Tex math={`\\tau = ${texNum(gistemp.mannKendallTau, 3)}\\;(p < 0.001)`} />
-            </span>
-            <span className="text-ink-primary">
-              Dev: {gistemp.deviationPct.toFixed(2)}%
-            </span>
+        {/* Plain-Language Explainer for Active/Inspected Indicator */}
+        <div className="glass-well rounded-lg px-4 py-3 flex items-start gap-2.5">
+          <Info
+            className="w-4 h-4 text-dipole-cyan shrink-0 mt-0.5"
+            aria-hidden="true"
+          />
+          <div className="space-y-0.5">
+            <p className="text-sm leading-relaxed text-ink-secondary">
+              <strong className="font-medium text-ink-primary">
+                {inspectedFriendly.name}
+              </strong>{" "}
+              ({inspectedMeta.unit}): {inspectedMeta.studentDefinition}
+            </p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
+              {inspectedMeta.code} · {inspectedMeta.nasaInstrumentHeritage}
+            </p>
           </div>
         </div>
-      </section>
-    </aside>
+      </div>
+    </div>
   );
 }
