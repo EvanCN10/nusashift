@@ -71,15 +71,15 @@ $$\text{where} \quad \mu_m = \frac{1}{Y} \sum_{y=1}^{Y} X_{y,m}, \quad \sigma_m 
 ### 4.2 Non-Parametric Mann-Kendall Trend Test
 Because meteorological time series frequently exhibit non-normal distributions and extreme outliers, monotonic trends are evaluated using the non-parametric Mann-Kendall test:
 
-$$S = \sum_{k=1}^{n-1} \sum_{j=k+1}^{n} \operatorname{sgn}(x_j - x_k)$$
+$$S = \sum_{k=1}^{n-1} \sum_{j=k+1}^{n} \text{sgn}(x_j - x_k)$$
 
-$$\operatorname{sgn}(\theta) = \begin{cases} +1 & \text{if } \theta > 0 \\ 0 & \text{if } \theta = 0 \\ -1 & \text{if } \theta < 0 \end{cases}$$
+$$\text{sgn}(\theta) = \begin{cases} +1 & \text{if } \theta > 0 \\ 0 & \text{if } \theta = 0 \\ -1 & \text{if } \theta < 0 \end{cases}$$
 
-$$\operatorname{Var}(S) = \frac{n(n-1)(2n+5) - \sum_{t} t(t-1)(2t+5)}{18}$$
+$$\text{Var}(S) = \frac{n(n-1)(2n+5) - \sum_{t} t(t-1)(2t+5)}{18}$$
 
 The standardized test statistic $Z_{\text{MK}}$ and Kendall's rank correlation coefficient $\tau$ are computed as:
 
-$$Z_{\text{MK}} = \begin{cases} \frac{S - 1}{\sqrt{\operatorname{Var}(S)}} & \text{if } S > 0 \\ 0 & \text{if } S = 0 \\ \frac{S + 1}{\sqrt{\operatorname{Var}(S)}} & \text{if } S < 0 \end{cases}, \qquad \tau = \frac{S}{\frac{1}{2}n(n-1)}$$
+$$Z_{\text{MK}} = \begin{cases} \frac{S - 1}{\sqrt{\text{Var}(S)}} & \text{if } S > 0 \\ 0 & \text{if } S = 0 \\ \frac{S + 1}{\sqrt{\text{Var}(S)}} & \text{if } S < 0 \end{cases}, \qquad \tau = \frac{S}{\frac{1}{2}n(n-1)}$$
 
 Two-tailed significance:
 $$p = 2 \left( 1 - \Phi(|Z_{\text{MK}}|) \right)$$
@@ -89,18 +89,18 @@ The magnitude of the trend per decade is determined through the median of all pa
 
 $$Q_{i} = \frac{x_j - x_k}{j - k} \quad \text{for } 1 \le k < j \le n$$
 
-$$\beta_{\text{decade}} = \operatorname{median}(Q) \times 120\text{ months}$$
+$$\beta_{\text{decade}} = \text{median}(Q) \times 120\text{ months}$$
 
 The non-parametric 95% confidence interval $[C_{\text{lower}}, C_{\text{upper}}]$ is calculated via ranks $M_1$ and $M_2$:
 
-$$C_{\alpha} = Z_{1 - \alpha/2} \times \sqrt{\operatorname{Var}(S)}$$
+$$C_{\alpha} = Z_{1 - \alpha/2} \times \sqrt{\text{Var}(S)}$$
 
 $$M_1 = \left\lfloor \frac{N - C_{\alpha}}{2} \right\rfloor, \quad M_2 = \left\lceil \frac{N + C_{\alpha}}{2} \right\rceil + 1 \quad \text{where } N = \frac{n(n-1)}{2}$$
 
 ### 4.4 Pettitt Change-Point Test (Climate Regime Shifts)
 To detect the abrupt calendar date of an Earth system regime shift, NusaShift uses Pettitt's rank-based non-parametric test:
 
-$$U_{t, n} = \sum_{i=1}^{t} \sum_{j=t+1}^{n} \operatorname{sgn}(x_i - x_j) \quad \text{for } 1 \le t < n$$
+$$U_{t, n} = \sum_{i=1}^{t} \sum_{j=t+1}^{n} \text{sgn}(x_i - x_j) \quad \text{for } 1 \le t < n$$
 
 $$K_T = \max_{1 \le t < n} |U_{t, n}|, \qquad \tau^* = \arg\max_{1 \le t < n} |U_{t, n}|$$
 
