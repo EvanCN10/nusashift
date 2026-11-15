@@ -1,6 +1,7 @@
 "use client";
 
 import { SlidersHorizontal, X } from "lucide-react";
+import LocationSearch from "@/components/LocationSearch";
 import MapControlsBar, {
   CASE_LABELS,
   type MapRenderMode,
@@ -32,6 +33,10 @@ interface FloatingToolsPanelProps {
   onPinModeChange: (mode: "A" | "B") => void;
   onSelectCase: (caseId: string) => void;
   onMapModeChange: (mode: MapRenderMode) => void;
+  onSelectLocation?: (
+    location: { name: string; country: string; lat: number; lon: number },
+    targetPin: "A" | "B"
+  ) => void;
   onUpdateParameters: (updates: {
     symptom?: SymptomId;
     ecosystem?: EcosystemType;
@@ -58,6 +63,7 @@ export default function FloatingToolsPanel({
   onPinModeChange,
   onSelectCase,
   onMapModeChange,
+  onSelectLocation,
   onUpdateParameters,
 }: FloatingToolsPanelProps) {
   const isHiddenOnDesktop = isDesktop && !desktopOpen;
@@ -136,6 +142,14 @@ export default function FloatingToolsPanel({
           onSelectCase={onSelectCase}
           onMapModeChange={onMapModeChange}
         />
+
+        {/* Location Search / Geocoder */}
+        {onSelectLocation ? (
+          <LocationSearch
+            activePinMode={activePinMode}
+            onSelectLocation={onSelectLocation}
+          />
+        ) : null}
 
         {/* Pinned A / B Quick Coordinates */}
         <div role="group" aria-label="Pinned regions" className="grid grid-cols-1 gap-1">

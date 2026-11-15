@@ -551,6 +551,36 @@ export default function NusaShiftDashboardPage() {
     [activePinMode, report, runLiveAnalyze]
   );
 
+  const handleSelectLocation = useCallback(
+    (
+      loc: { name: string; country: string; lat: number; lon: number },
+      targetPin: "A" | "B"
+    ) => {
+      const newPoint = {
+        name: loc.name,
+        country: loc.country,
+        lat: loc.lat,
+        lon: loc.lon,
+      };
+      const regionA = targetPin === "A" ? newPoint : report.regionA;
+      const regionB = targetPin === "B" ? newPoint : report.regionB;
+
+      // Automatically switch to the alternate pin so the user can easily select the pair
+      setActivePinMode(targetPin === "A" ? "B" : "A");
+
+      void runLiveAnalyze({
+        caseId: "live-custom-pair",
+        startYear: report.startYear,
+        endYear: report.endYear,
+        symptom: report.symptom,
+        ecosystem: report.ecosystem,
+        regionA,
+        regionB,
+      });
+    },
+    [report, runLiveAnalyze]
+  );
+
   const handleToggleProof = useCallback(() => {
     setIsProofOpen((prev) => {
       const next = !prev;
@@ -784,6 +814,7 @@ export default function NusaShiftDashboardPage() {
           is3dAvailable={is3dAvailable}
           onPinModeChange={setActivePinMode}
           onSelectCase={handleSelectCase}
+          onSelectLocation={handleSelectLocation}
           onMapModeChange={setMapMode}
           onUpdateParameters={handleUpdateParameters}
         />
