@@ -57,3 +57,4 @@ Conventional Earth observation platforms (like NASA Worldview or Giovanni) plot 
 
 ## 4. Key Tags for NASA Portal
 `Earth Science`, `Software`, `NASA POWER`, `GISTEMP v4`, `MERRA-2`, `Teleconnections`, `Climate Resilience`, `Drought Early Warning`, `Open Science`.
+
